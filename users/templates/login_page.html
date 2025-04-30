@@ -104,7 +104,7 @@
             </div>
             <form @submit.prevent="login">
                 <div class="form-group">
-                    <label for="username">用戶名/電子郵件</label>
+                    <label for="username">用戶名</label>
                     <input 
                         type="text" 
                         id="username" 
@@ -141,7 +141,7 @@
                 <p class="error-message" v-if="errors.login">{{ errors.login }}</p>
                 
                 <div class="signup-link">
-                    還沒有帳號？ <a href="#">立即註冊</a>
+                    還沒有帳號？ <a href="/register/">立即註冊</a>
                 </div>
             </form>
         </div>
