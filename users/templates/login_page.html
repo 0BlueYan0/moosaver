@@ -1,101 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moosaver登入</title>
-    <!-- 確保 Vue.js 正確載入 -->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .login-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 350px;
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .login-header h1 {
-            color: #4a6fb5;
-            margin-bottom: 10px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #333;
-        }
-        input[type="email"],
-        input[type="password"],
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        input:focus {
-            border-color: #4a6fb5;
-            outline: none;
-        }
-        .error-message {
-            color: #e53935;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        .remember-me {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .remember-me input {
-            margin-right: 8px;
-        }
-        .login-button {
-            width: 100%;
-            background-color: #4a6fb5;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .login-button:hover {
-            background-color: #3a5c9a;
-        }
-        .signup-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-        .signup-link a {
-            color: #4a6fb5;
-            text-decoration: none;
-        }
-        .signup-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
+{% extends "master.html" %}
+  
+{% block title %}Moosaver登入{% endblock %}
+
+{% block content %}
     <div id="app">
         <div class="login-container">
             <div class="login-header">
@@ -112,7 +19,7 @@
                         required
                         @blur="validateUsername"
                     >
-                    <p class="error-message" v-if="errors.username">{{ errors.username }}</p>
+                    <p class="error-message" v-if="errors.username">[[ errors.username ]]</p>
                 </div>
                 
                 <div class="form-group">
@@ -124,7 +31,7 @@
                         required
                         @blur="validatePassword"
                     >
-                    <p class="error-message" v-if="errors.password">{{ errors.password }}</p>
+                    <p class="error-message" v-if="errors.password">[[ errors.password ]]</p>
                 </div>
                 
                 <div class="remember-me">
@@ -138,10 +45,10 @@
                     <span v-else>登入</span>
                 </button>
                 
-                <p class="error-message" v-if="errors.login">{{ errors.login }}</p>
+                <p class="error-message" v-if="errors.login">[[ errors.login ]]</p>
                 
                 <div class="signup-link">
-                    還沒有帳號？ <a href="/register/">立即註冊</a>
+                    還沒有帳號？ <a href="/users/register/">立即註冊</a>
                 </div>
             </form>
         </div>
@@ -152,6 +59,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             var app = new Vue({
                 el: '#app',
+                delimiters: ['[[', ']]'],
                 data: {
                     username: '',
                     password: '',
@@ -220,4 +128,5 @@
         });
     </script>
 </body>
-</html>
+
+{% endblock %}

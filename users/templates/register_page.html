@@ -1,185 +1,164 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moosaver註冊</title>
-    <!-- 引入 Vue.js -->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .register-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 350px;
-        }
-        .register-header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .register-header h1 {
-            color: #4a6fb5;
-            margin-bottom: 10px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #333;
-        }
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        input:focus {
-            border-color: #4a6fb5;
-            outline: none;
-        }
-        .error-message {
-            color: #e53935;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        .register-button {
-            width: 100%;
-            background-color: #4a6fb5;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .register-button:hover {
-            background-color: #3a5c9a;
-        }
-        .register-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .login-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-        .login-link a {
-            color: #4a6fb5;
-            text-decoration: none;
-        }
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-    <div id="app">
-        <div class="register-container">
-            <div class="register-header">
-                <h1>Moosaver</h1>
-                <p>建立您的帳號</p>
-            </div>
-            <form @submit.prevent="registerUser">
-                <div class="form-group">
-                    <label for="username">用戶名</label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        v-model="username" 
-                        required 
-                        @blur="validateUsername"
-                    >
-                    <p class="error-message" v-if="errors.username">{{ errors.username }}</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">密碼</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        v-model="password" 
-                        required
-                        @blur="validatePassword"
-                    >
-                    <p class="error-message" v-if="errors.password">{{ errors.password }}</p>
-                </div>
-                
-                <button type="submit" class="register-button" :disabled="!isFormValid">註冊</button>
-                
-                <div class="login-link">
-                    已有帳號？ <a href="/login/">立即登入</a>
-                </div>
-            </form>
-        </div>
-    </div>
+{% extends "master.html" %}
 
-    <script>
-        new Vue({
-            el: '#app',
-            data: {
+{% block title %}Moosaver註冊{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="register-container">
+        <div class="register-header">
+            <h1>Moosaver</h1>
+            <p>建立您的帳號</p>
+        </div>
+        <form @submit.prevent="registerUser">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="email">電子郵件</label>
+                <input type="text" id="email" v-model="email" required @blur="validateEmail">
+                <p class="error-message" v-if="errors.email">[[ errors.email ]]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="username">用戶名</label>
+                <input type="text" id="username" v-model="username" required @blur="validateUsername">
+                <p class="error-message" v-if="errors.username">[[ errors.username ]]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="password">密碼</label>
+                <input type="password" id="password" v-model="password" required @blur="validatePassword">
+                <p class="error-message" v-if="errors.password">[[ errors.password ]]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordAgain">再次輸入密碼</label>
+                <input type="password" id="passwordAgain" v-model="passwordAgain" required @blur="validatePasswordAgain">
+                <p class="error-message" v-if="errors.passwordAgain">[[ errors.passwordAgain ]]</p>
+            </div>
+
+            <button type="submit" class="register-button">註冊</button>
+
+            <div class="login-link">
+                已有帳號？ <a href="/users/login/">立即登入</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        delimiters: ['[[', ']]'],
+        data: {
+            email: '',
+            username: '',
+            password: '',
+            passwordAgain: '',
+            errors: {
+                email: '',
                 username: '',
                 password: '',
-                errors: {
-                    username: '',
-                    password: ''
+                passwordAgain: ''
+            }
+        },
+        computed: {
+            isFormValid() {
+                return this.email.length > 0 &&
+                    this.username.length >= 3 &&
+                    this.password.length >= 6 &&
+                    this.password === this.passwordAgain &&
+                    !this.errors.email &&
+                    !this.errors.username &&
+                    !this.errors.password &&
+                    !this.errors.passwordAgain;
+            }
+        },
+        methods: {
+            validateEmail() {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(this.email)) {
+                    this.errors.email = '請輸入有效的電子郵件地址';
+                } else {
+                    this.errors.email = '';
                 }
             },
-            computed: {
-                isFormValid() {
-                    return this.username.length >= 3 &&
-                           this.password.length >= 6 &&
-                           !this.errors.username &&
-                           !this.errors.password;
+            validateUsername() {
+                if (this.username.length < 3) {
+                    this.errors.username = '用戶名必須至少包含3個字符';
+                } else {
+                    this.errors.username = '';
                 }
             },
-            methods: {
-                validateUsername() {
-                    if (this.username.length < 3) {
-                        this.errors.username = '用戶名必須至少包含3個字符';
-                    } else {
-                        this.errors.username = '';
-                    }
-                },
-                validatePassword() {
-                    if (this.password.length < 6) {
-                        this.errors.password = '密碼必須至少包含6個字符';
-                    } else {
-                        this.errors.password = '';
-                    }
-                },
-                registerUser() {
-                    if (this.isFormValid) {
-                        // 在此處理註冊請求，例如發送到後端API
-                        console.log('註冊用戶:', {
-                            username: this.username,
-                            password: this.password
+            validatePassword() {
+                if (this.password.length < 6) {
+                    this.errors.password = '密碼必須至少包含6個字符';
+                } else {
+                    this.errors.password = '';
+                    this.validatePasswordAgain(); // 這裡調用驗證再次輸入的密碼
+                }
+            },
+            validatePasswordAgain() {
+                if (this.password !== this.passwordAgain) {
+                    this.errors.passwordAgain = '兩次輸入的密碼不一致';
+                } else {
+                    this.errors.passwordAgain = '';
+                }
+            },
+            registerUser() {
+                if (this.isFormValid) {
+                    // 獲取CSRF令牌
+                    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                    // 準備要發送的數據
+                    const userData = {
+                        email: this.email,
+                        username: this.username,
+                        password: this.password
+                    };
+
+                    // 發送POST請求到Django後端
+                    fetch('/users/register/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: JSON.stringify(userData)
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(data => Promise.reject(data));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            // 處理成功響應
+                            alert('註冊成功！');
+                            // 重定向到登入頁面或其他頁面
+                            window.location.href = '/users/login/';
+                        })
+                        .catch(errors => {
+                            // 處理後端返回的錯誤
+                            if (errors.email) this.errors.email = errors.email;
+                            if (errors.username) this.errors.username = errors.username;
+                            if (errors.password) this.errors.password = errors.password;
                         });
-                        alert('註冊成功！');
-                        // 表單提交後重置
-                        this.username = '';
-                        this.password = '';
-                    }
+                    // 表單提交後重置
+                    this.email = '';
+                    this.username = '';
+                    this.password = '';
+                    this.passwordAgain = '';
+                    this.errors = {
+                        email: '',
+                        username: '',
+                        password: '',
+                        passwordAgain: ''
+                    };
+
                 }
             }
-        });
-    </script>
+        }
+    });
+</script>
 </body>
-</html>
+
+{% endblock %}
