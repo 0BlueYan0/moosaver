@@ -1,13 +1,11 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
 from django.template import loader
-from .forms import RegisterForm
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
 
-# 保留原有的login_view
 def login_view(request):
     template = loader.get_template('login_page.html')
     return HttpResponse(template.render())
@@ -71,13 +69,3 @@ def register_view(request):
             except Exception as e:
                 # 捕獲其他未預期的錯誤
                 return JsonResponse({'error': str(e)}, status=500)
-        
-        # 處理傳統表單提交 (可選，保留向後兼容性)
-        else:
-            form = RegisterForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect('login')
-            else:
-                # 表單無效時顯示錯誤
-                return render(request, 'register_page.html', {'form': form})

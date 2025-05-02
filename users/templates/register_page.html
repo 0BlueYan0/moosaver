@@ -93,7 +93,7 @@
                     this.errors.password = '密碼必須至少包含6個字符';
                 } else {
                     this.errors.password = '';
-                    this.validatePasswordAgain(); // 這裡調用驗證再次輸入的密碼
+                    if(this.passwordAgain !== '')this.validatePasswordAgain(); // 這裡調用驗證再次輸入的密碼
                 }
             },
             validatePasswordAgain() {
