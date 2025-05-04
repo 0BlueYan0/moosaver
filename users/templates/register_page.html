@@ -131,10 +131,7 @@
                             return response.json();
                         })
                         .then(data => {
-                            // 處理成功響應
-                            alert('註冊成功！');
-                            // 重定向到登入頁面或其他頁面
-                            window.location.href = '/users/login/';
+                            window.location.href = '/home/'; // 註冊成功後重定向到首頁
                         })
                         .catch(errors => {
                             // 處理後端返回的錯誤

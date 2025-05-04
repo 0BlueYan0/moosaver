@@ -5,10 +5,53 @@ import json
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth import authenticate, login, logout
 
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
 def login_view(request):
-    template = loader.get_template('login_page.html')
-    return HttpResponse(template.render())
+    # 處理GET請求 - 顯示登入頁面
+    if request.method == 'GET':
+        template = loader.get_template('login_page.html')
+        return HttpResponse(template.render())
+    
+    # 處理POST請求 - 處理登入數據
+    elif request.method == 'POST':
+        content_type = request.headers.get('Content-Type', '')
+        
+        # 處理JSON請求 (來自前端的AJAX請求)
+        if 'application/json' in content_type:
+            try:
+                # 解析JSON數據
+                data = json.loads(request.body)
+                
+                # 提取數據
+                username = data.get('username', '')
+                password = data.get('password', '')
+                remember_me = data.get('remember_me', False)
+                
+                # 驗證用戶
+                user = authenticate(request, username=username, password=password)
+                
+                if user is not None:
+                    # 登入用戶
+                    login(request, user)
+                    if remember_me:
+                        request.session.set_expiry(30* 24 * 60 * 60)  # 設置會話過期時間為30天
+                    else:
+                        request.session.set_expiry(0)  # 設置會話過期時間為瀏覽器關閉時
+                    return JsonResponse({
+                        'message': '登入成功',
+                        'username': user.username
+                    })
+                else:
+                    return JsonResponse({'error': '用戶名或密碼不正確'}, status=400)
+                    
+            except json.JSONDecodeError:
+                return JsonResponse({'error': '無效的JSON格式'}, status=400)
+                
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=500)
 
 # 修改register_view函數
 @ensure_csrf_cookie
@@ -60,8 +103,14 @@ def register_view(request):
                     password=password
                 )
                 
+                # 登入新創建的用戶
+                login(request, user)
+                
                 # 返回成功訊息
-                return JsonResponse({'message': '註冊成功'}, status=201)
+                return JsonResponse({
+                    'message': '註冊成功',
+                    'username': user.username
+                }, status=201)
                 
             except json.JSONDecodeError:
                 return JsonResponse({'error': '無效的JSON格式'}, status=400)
@@ -69,3 +118,8 @@ def register_view(request):
             except Exception as e:
                 # 捕獲其他未預期的錯誤
                 return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["POST"])
+def logout_view(request):
+    logout(request)
+    return JsonResponse({'message': '已成功登出'})

@@ -9,7 +9,8 @@
                 <h1>Moosaver</h1>
                 <p>請登入您的帳號</p>
             </div>
-            <form @submit.prevent="login">
+            <form @submit.prevent="loginUser">
+                {% csrf_token %}
                 <div class="form-group">
                     <label for="username">用戶名</label>
                     <input 
@@ -79,20 +80,20 @@
                 },
                 methods: {
                     validateUsername: function() {
-                        if (this.username.length < 3) {
-                            this.errors.username = '用戶名必須至少包含3個字符';
+                        if (this.username.length === 0) {
+                            this.errors.username = '用戶名不能為空';
                         } else {
                             this.errors.username = '';
                         }
                     },
                     validatePassword: function() {
-                        if (this.password.length < 6) {
-                            this.errors.password = '密碼必須至少包含6個字符';
+                        if (this.password.length === 0) {
+                            this.errors.password = '密碼不能為空';
                         } else {
                             this.errors.password = '';
                         }
                     },
-                    login: function() {
+                    loginUser: function() {
                         // 驗證所有欄位
                         this.validateUsername();
                         this.validatePassword();
@@ -102,29 +103,69 @@
                             return;
                         }
                         
-                        // 模擬登入請求
                         this.isLoading = true;
                         this.errors.login = '';
+
+                        // 獲取CSRF token的更健壯方法
+                        let csrftoken;
+                        const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
                         
-                        // 在實際應用中，這裡應該發送API請求到後端進行身份驗證
-                        setTimeout(() => {
-                            // 模擬API回應
+                        if (csrfElement) {
+                            csrftoken = csrfElement.value;
+                        } else {
+                            // 如果找不到表單中的token，嘗試從cookie獲取
+                            const cookies = document.cookie.split(';');
+                            for (let i = 0; i < cookies.length; i++) {
+                                const cookie = cookies[i].trim();
+                                if (cookie.startsWith('csrftoken=')) {
+                                    csrftoken = cookie.substring('csrftoken='.length);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 如果仍然找不到token，顯示錯誤
+                        if (!csrftoken) {
                             this.isLoading = false;
-                            
-                            // 模擬登入成功
-                            alert('登入成功！');
-                            console.log('用戶登入資料:', {
+                            this.errors.login = 'CSRF Token 獲取失敗，請重新整理頁面';
+                            return;
+                        }
+                        
+                        fetch('/users/login/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken
+                            },
+                            body: JSON.stringify({
                                 username: this.username,
                                 password: this.password,
                                 rememberMe: this.rememberMe
-                            });
-                        }, 1500);
+                            })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(data => Promise.reject(data));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            // 登入成功，重定向到首頁
+                            window.location.href = '/';
+                        })
+                        .catch(error => {
+                            // 登入失敗，顯示錯誤消息
+                            this.isLoading = false;
+                            if (error.error) {
+                                this.errors.login = error.error;
+                            } else {
+                                this.errors.login = '登入時發生錯誤，請稍後重試';
+                            }
+                        });
                     }
                 }
             });
             
-            // 檢查 Vue 是否正確初始化
-            console.log('Vue 實例初始化完成');
         });
     </script>
 </body>
