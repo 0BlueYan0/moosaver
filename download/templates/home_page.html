@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-tw">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +10,8 @@
     <!-- 字體引入 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
     <!-- 圖示引入 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -39,6 +41,8 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.6;
+            padding-bottom: 70px;
+            /* 為了讓 footer 不被 header 蓋住 */
         }
 
         .header {
@@ -220,7 +224,14 @@
             color: white;
             padding: 1.5rem;
             text-align: center;
-            margin-top: 3rem;
+            position: fixed;
+            /* 固定定位 */
+            bottom: 0;
+            /* 固定在底部 */
+            left: 0;
+            right: 0;
+            z-index: 100;
+            /* 確保顯示在其他元素上方 */
         }
 
         .copyright {
@@ -260,6 +271,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="app">
         <header class="header">
@@ -269,9 +281,9 @@
                     <span>MooSaver</span>
                 </div>
                 <div class="nav-links" :class="{ active: menuActive }">
-                    <a href="#" class="nav-link active">首頁</a>
-                    <a href="#" class="nav-link">下載資源</a>
-                    <a href="#" class="nav-link">使用說明</a>
+                    <a href="/" class="nav-link active">首頁</a>
+                    <a href="/download/" class="nav-link">下載資源</a>
+                    <a href="#" class="nav-link">管理資源</a>
                     <a href="#" class="nav-link" @click.prevent="logout">登出</a>
                 </div>
                 <div class="burger" @click="toggleMenu">
@@ -289,7 +301,7 @@
                     讓您的學習更加便利高效。
                 </p>
                 <a href="#" class="btn">開始下載資源</a>
-                
+
                 <div class="features">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -316,7 +328,7 @@
 
     <script>
         const { createApp } = Vue;
-        
+
         createApp({
             data() {
                 return {
@@ -339,21 +351,21 @@
                         },
                         credentials: 'same-origin' // 包含 cookies
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        // 登出成功後重定向到登入頁面
-                        window.location.href = '/users/login/';
-                    })
-                    .catch(error => {
-                        console.error('登出失敗:', error);
-                    });
+                        .then(response => response.json())
+                        .then(data => {
+                            // 登出成功後重定向到登入頁面
+                            window.location.href = '/users/login/';
+                        })
+                        .catch(error => {
+                            console.error('登出失敗:', error);
+                        });
                 },
                 getCSRFToken() {
                     // 從 cookie 中獲取 CSRF Token
                     const name = 'csrftoken=';
                     const decodedCookie = decodeURIComponent(document.cookie);
                     const cookieArray = decodedCookie.split(';');
-                    
+
                     for (let i = 0; i < cookieArray.length; i++) {
                         let cookie = cookieArray[i].trim();
                         if (cookie.indexOf(name) === 0) {
@@ -366,4 +378,5 @@
         }).mount('#app');
     </script>
 </body>
+
 </html>
