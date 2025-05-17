@@ -239,6 +239,45 @@
             opacity: 0.8;
         }
 
+        .user-dropdown {
+            position: relative;
+        }
+
+        .user-link {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+            width: auto;              /* 讓寬度自動 */
+            min-width: max-content;   /* 最小寬度為內容寬度 */
+            white-space: nowrap;      /* 不換行 */
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: white;
+        }
+
         /* 響應式設計 */
         @media (max-width: 768px) {
             .burger {
@@ -284,7 +323,17 @@
                     <a href="/" class="nav-link active">首頁</a>
                     <a href="/download/" class="nav-link">下載資源</a>
                     <a href="#" class="nav-link">管理資源</a>
-                    <a href="#" class="nav-link" @click.prevent="logout">登出</a>
+                    <!-- 使用者下拉選單 -->
+                    <div class="user-dropdown" @mouseenter="userMenu = true" @mouseleave="userMenu = false">
+                        <a href="#" class="nav-link user-link" @click.prevent="userMenu = !userMenu">
+                            <i class="fas fa-user-circle"></i> {{ username }}
+                            <i class="fas fa-caret-down" style="margin-left: 0.3em;"></i>
+                        </a>
+                        <div class="dropdown-menu" v-show="userMenu">
+                            <a href="/users/profile/" class="dropdown-item">個人資料</a>
+                            <a href="#" class="dropdown-item" @click.prevent="logout">登出</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="burger" @click="toggleMenu">
                     <i :class="menuActive ? 'fas fa-times' : 'fas fa-bars'"></i>
@@ -300,7 +349,7 @@
                     透過 MooSaver，您可以輕鬆下載及管理 Moodle 平台上的課程資源，
                     讓您的學習更加便利高效。
                 </p>
-                <a href="#" class="btn">開始下載資源</a>
+                <a href="/download/" class="btn">開始下載資源</a>
 
                 <div class="features">
                     <div class="feature-card">
@@ -333,6 +382,7 @@
             data() {
                 return {
                     menuActive: false,
+                    userMenu: false,
                     username: '使用者',
                 }
             },

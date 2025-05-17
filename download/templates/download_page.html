@@ -231,6 +231,46 @@
             opacity: 0.8;
         }
 
+        .user-dropdown {
+            position: relative;
+        }
+
+        .user-link {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+            width: auto;              /* 讓寬度自動 */
+            min-width: max-content;   /* 最小寬度為內容寬度 */
+            white-space: nowrap;      /* 不換行 */
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: white;
+        }
+
+
         /* 響應式設計 */
         @media (max-width: 768px) {
             .burger {
@@ -276,7 +316,17 @@
                     <a href="/" class="nav-link">首頁</a>
                     <a href="/download/" class="nav-link active">下載資源</a>
                     <a href="#" class="nav-link">管理資源</a>
-                    <a href="#" class="nav-link" @click.prevent="logout">登出</a>
+                    <!-- 使用者下拉選單 -->
+                    <div class="user-dropdown" @mouseenter="userMenu = true" @mouseleave="userMenu = false">
+                        <a href="#" class="nav-link user-link" @click.prevent="userMenu = !userMenu">
+                            <i class="fas fa-user-circle"></i> {{ username }}
+                            <i class="fas fa-caret-down" style="margin-left: 0.3em;"></i>
+                        </a>
+                        <div class="dropdown-menu" v-show="userMenu">
+                            <a href="/users/profile/" class="dropdown-item">個人資料</a>
+                            <a href="#" class="dropdown-item" @click.prevent="logout">登出</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="burger" @click="toggleMenu">
                     <i :class="menuActive ? 'fas fa-times' : 'fas fa-bars'"></i>
@@ -292,6 +342,23 @@
                 </p>
 
                 <form @submit.prevent="startDownload">
+                    <!-- 新增 Moodle 網址選擇 -->
+                    <div class="form-group">
+                        <label for="moodleUrl" class="form-label">Moodle 網址</label>
+                        <select id="moodleUrl" v-model="selectedUrl" class="form-input">
+                            <option value="https://ilearn.fcu.edu.tw/">逢甲大學(https://ilearn.fcu.edu.tw/)</option>
+                            <option value="custom">自訂網址</option>
+                        </select>
+                        <input
+                            v-if="selectedUrl === 'custom'"
+                            type="text"
+                            v-model="customUrl"
+                            class="form-input"
+                            placeholder="請輸入自訂 Moodle 網址"
+                            style="margin-top: 0.5rem;"
+                        >
+                    </div>
+
                     <div class="form-group">
                         <label for="studentId" class="form-label">NID/學號</label>
                         <input type="text" id="studentId" v-model="studentId" class="form-input"
@@ -328,6 +395,8 @@
                     menuActive: false,
                     studentId: '',
                     password: '',
+                    selectedUrl: 'https://ilearn.fcu.edu.tw/',
+                    customUrl: '',
                     isLoading: false
                 }
             },
@@ -338,6 +407,8 @@
                 startDownload() {
                     this.isLoading = true;
 
+                    const moodleUrl = this.selectedUrl === 'custom' ? this.customUrl : this.selectedUrl;
+
                     // 向後端發送下載請求
                     fetch('/api/download/', {
                         method: 'POST',
@@ -347,7 +418,8 @@
                         },
                         body: JSON.stringify({
                             student_id: this.studentId,
-                            password: this.password
+                            password: this.password,
+                            moodle_url: moodleUrl
                         })
                     })
                         .then(response => response.json())

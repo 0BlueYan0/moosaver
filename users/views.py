@@ -102,6 +102,11 @@ def register_view(request):
                     email=email,
                     password=password
                 )
+
+                # 註冊成功後建立使用者資料夾
+                import os
+                user_dir = os.path.join('users', user.username)
+                os.makedirs(user_dir, exist_ok=True)
                 
                 # 登入新創建的用戶
                 login(request, user)
