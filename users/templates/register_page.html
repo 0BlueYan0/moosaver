@@ -1,0 +1,161 @@
+{% extends "master.html" %}
+
+{% block title %}Moosaver註冊{% endblock %}
+
+{% block content %}
+<div id="app">
+    <div class="register-container">
+        <div class="register-header">
+            <h1>Moosaver</h1>
+            <p>建立您的帳號</p>
+        </div>
+        <form @submit.prevent="registerUser">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="email">電子郵件</label>
+                <input type="text" id="email" v-model="email" required @blur="validateEmail">
+                <p class="error-message" v-if="errors.email">[[ errors.email ]]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="username">用戶名</label>
+                <input type="text" id="username" v-model="username" required @blur="validateUsername">
+                <p class="error-message" v-if="errors.username">[[ errors.username ]]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="password">密碼</label>
+                <input type="password" id="password" v-model="password" required @blur="validatePassword">
+                <p class="error-message" v-if="errors.password">[[ errors.password ]]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordAgain">再次輸入密碼</label>
+                <input type="password" id="passwordAgain" v-model="passwordAgain" required @blur="validatePasswordAgain">
+                <p class="error-message" v-if="errors.passwordAgain">[[ errors.passwordAgain ]]</p>
+            </div>
+
+            <button type="submit" class="register-button">註冊</button>
+
+            <div class="login-link">
+                已有帳號？ <a href="/users/login/">立即登入</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        delimiters: ['[[', ']]'],
+        data: {
+            email: '',
+            username: '',
+            password: '',
+            passwordAgain: '',
+            errors: {
+                email: '',
+                username: '',
+                password: '',
+                passwordAgain: ''
+            }
+        },
+        computed: {
+            isFormValid() {
+                return this.email.length > 0 &&
+                    this.username.length >= 3 &&
+                    this.password.length >= 6 &&
+                    this.password === this.passwordAgain &&
+                    !this.errors.email &&
+                    !this.errors.username &&
+                    !this.errors.password &&
+                    !this.errors.passwordAgain;
+            }
+        },
+        methods: {
+            validateEmail() {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(this.email)) {
+                    this.errors.email = '請輸入有效的電子郵件地址';
+                } else {
+                    this.errors.email = '';
+                }
+            },
+            validateUsername() {
+                if (this.username.length < 3) {
+                    this.errors.username = '用戶名必須至少包含3個字符';
+                } else {
+                    this.errors.username = '';
+                }
+            },
+            validatePassword() {
+                if (this.password.length < 6) {
+                    this.errors.password = '密碼必須至少包含6個字符';
+                } else {
+                    this.errors.password = '';
+                    if(this.passwordAgain !== '')this.validatePasswordAgain(); // 這裡調用驗證再次輸入的密碼
+                }
+            },
+            validatePasswordAgain() {
+                if (this.password !== this.passwordAgain) {
+                    this.errors.passwordAgain = '兩次輸入的密碼不一致';
+                } else {
+                    this.errors.passwordAgain = '';
+                }
+            },
+            registerUser() {
+                if (this.isFormValid) {
+                    // 獲取CSRF令牌
+                    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                    // 準備要發送的數據
+                    const userData = {
+                        email: this.email,
+                        username: this.username,
+                        password: this.password
+                    };
+
+                    // 發送POST請求到Django後端
+                    fetch('/users/register/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: JSON.stringify(userData)
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(data => Promise.reject(data));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            window.location.href = '/home/'; // 註冊成功後重定向到首頁
+                        })
+                        .catch(errors => {
+                            // 處理後端返回的錯誤
+                            if (errors.email) this.errors.email = errors.email;
+                            if (errors.username) this.errors.username = errors.username;
+                            if (errors.password) this.errors.password = errors.password;
+                        });
+                    // 表單提交後重置
+                    this.email = '';
+                    this.username = '';
+                    this.password = '';
+                    this.passwordAgain = '';
+                    this.errors = {
+                        email: '',
+                        username: '',
+                        password: '',
+                        passwordAgain: ''
+                    };
+
+                }
+            }
+        }
+    });
+</script>
+</body>
+
+{% endblock %}

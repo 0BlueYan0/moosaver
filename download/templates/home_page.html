@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MooSaver - Moodle資源下載工具</title>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 字體引入 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- 圖示引入 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 將 Django 變數傳遞給 JavaScript -->
+    <script>
+    window.djangoData = {
+        username: '{{ username|escapejs }}',
+        isAdmin: '{{ is_admin }}' === 'True'
+    };
+    </script>
+    
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-light: #5dade2;
+            --primary-dark: #2874a6;
+            --accent-color: #f39c12;
+            --text-color: #333;
+            --text-light: #666;
+            --bg-color: #f9f9f9;
+            --card-bg: #ffffff;
+            --header-height: 70px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding-bottom: 70px;
+            /* 為了讓 footer 不被 header 蓋住 */
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            transition: var(--transition);
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            padding: 0 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .logo i {
+            margin-right: 0.5rem;
+            font-size: 1.8rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+            padding: 0.5rem 0;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+            transition: var(--transition);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .active {
+            color: var(--primary-color);
+        }
+
+        .active::after {
+            width: 100%;
+        }
+
+        .burger {
+            display: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .main-content {
+            margin-top: var(--header-height);
+            padding: 3rem 2rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .welcome-container {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
+            text-align: center;
+            max-width: 800px;
+            margin: 3rem auto;
+        }
+
+        .welcome-heading {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+        }
+
+        .username {
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .welcome-text {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            color: var(--text-light);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-desc {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            background-color: var(--primary-dark);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            position: fixed;
+            /* 固定定位 */
+            bottom: 0;
+            /* 固定在底部 */
+            left: 0;
+            right: 0;
+            z-index: 100;
+            /* 確保顯示在其他元素上方 */
+        }
+
+        .copyright {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .user-dropdown {
+            position: relative;
+        }
+
+        .user-link {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+            width: auto;              /* 讓寬度自動 */
+            min-width: max-content;   /* 最小寬度為內容寬度 */
+            white-space: nowrap;      /* 不換行 */
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: white;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .burger {
+                display: block;
+            }
+
+            .nav-links {
+                position: absolute;
+                right: 0;
+                top: var(--header-height);
+                flex-direction: column;
+                background-color: var(--card-bg);
+                width: 100%;
+                text-align: center;
+                gap: 0;
+                transform: translateY(-150%);
+                transition: var(--transition);
+                box-shadow: var(--shadow);
+            }
+
+            .nav-links.active {
+                transform: translateY(0);
+            }
+
+            .nav-link {
+                padding: 1rem;
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header class="header">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-download"></i>
+                    <span>MooSaver</span>
+                </div>
+                <div class="nav-links" :class="{ active: menuActive }">
+                    <a href="/" class="nav-link active">首頁</a>
+                    <a href="/download/" class="nav-link">下載資源</a>
+                    <a href="/files/" class="nav-link">管理資源</a>
+                    <!-- 管理後台連結 - 只有管理員可見 -->
+                    <a href="/admin/" class="nav-link" v-if="isAdmin">
+                        <i class="fas fa-cog"></i> 管理後台
+                    </a>
+                    <!-- 使用者下拉選單 -->
+                    <div class="user-dropdown" @mouseenter="userMenu = true" @mouseleave="userMenu = false">
+                        <a href="#" class="nav-link user-link" @click.prevent="userMenu = !userMenu">
+                            <i class="fas fa-user-circle"></i> {{ username }}
+                            <i class="fas fa-caret-down" style="margin-left: 0.3em;"></i>
+                        </a>
+                        <div class="dropdown-menu" v-show="userMenu">
+                            <a href="/profile/" class="dropdown-item">個人資料</a>
+                            <a href="#" class="dropdown-item" @click.prevent="logout">登出</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="burger" @click="toggleMenu">
+                    <i :class="menuActive ? 'fas fa-times' : 'fas fa-bars'"></i>
+                </div>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="welcome-container">
+                <h1 class="welcome-heading">歡迎，<span class="username">{{ username }}</span>！</h1>
+                <p class="welcome-text">
+                    歡迎使用 MooSaver，這是一個 Moodle 資源下載工具。<br>
+                    透過 MooSaver，您可以輕鬆下載及管理 Moodle 平台上的課程資源。
+                </p>
+                <a href="/download/" class="btn">開始下載資源</a>
+
+                <div class="features">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3 class="feature-title">快速下載</h3>
+                        <p class="feature-desc">一鍵批量下載所有課程資源，節省寶貴時間。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-folder-tree"></i>
+                        </div>
+                        <h3 class="feature-title">智能整理</h3>
+                        <p class="feature-desc">自動按課程分類，檔案管理更清晰。</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p class="copyright">© 2025 MooSaver - Moodle資源下載工具</p>
+        </footer>
+    </div>
+
+    <script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            menuActive: false,
+            userMenu: false,
+            username: window.djangoData.username,
+            isAdmin: window.djangoData.isAdmin,
+        }
+    },
+    mounted() {
+        // 移除 checkUserPermissions 的調用
+    },
+    methods: {
+        toggleMenu() {
+            this.menuActive = !this.menuActive;
+        },
+        logout() {
+            fetch('/users/logout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = '/users/login/';
+            })
+            .catch(error => {
+                console.error('登出失敗:', error);
+                window.location.href = '/users/login/';
+            });
+        },
+        getCSRFToken() {
+            const name = 'csrftoken=';
+            const decodedCookie = decodeURIComponent(document.cookie);
+            const cookieArray = decodedCookie.split(';');
+            for (let i = 0; i < cookieArray.length; i++) {
+                let cookie = cookieArray[i].trim();
+                if (cookie.indexOf(name) === 0) {
+                    return cookie.substring(name.length, cookie.length);
+                }
+            }
+            return '';
+        }
+    }
+}).mount('#app');
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>檔案管理 - MooSaver</title>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 字體與圖示 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 將 Django 變數傳遞給 JavaScript -->
+    <script>
+        window.djangoData = {
+            username: '{{ username|escapejs }}',
+            isAdmin: '{{ is_admin }}' === 'True'
+        };
+    </script>
+    
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-light: #5dade2;
+            --primary-dark: #2874a6;
+            --accent-color: #f39c12;
+            --text-color: #333;
+            --text-light: #666;
+            --bg-color: #f9f9f9;
+            --card-bg: #ffffff;
+            --header-height: 70px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+            --transition: all 0.3s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding-bottom: 70px;
+        }
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--header-height);
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            transition: var(--transition);
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            padding: 0 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .logo i { margin-right: 0.5rem; font-size: 1.8rem; }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+        .nav-link {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+            padding: 0.5rem 0;
+            position: relative;
+        }
+        .nav-link:hover { color: var(--primary-color); }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 0; height: 2px;
+            background-color: var(--primary-color);
+            transition: var(--transition);
+        }
+        .nav-link:hover::after { width: 100%; }
+        .active { color: var(--primary-color); }
+        .active::after { width: 100%; }
+        .burger { display: none; cursor: pointer; font-size: 1.5rem; }
+        .footer {
+            background-color: var(--primary-dark);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 100;
+        }
+        .copyright { font-size: 0.9rem; opacity: 0.8; }
+        .user-dropdown { position: relative; }
+        .user-link { display: flex; align-items: center; cursor: pointer; }
+        .dropdown-menu {
+            position: absolute;
+            top: 100%; left: 0;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+            width: auto;
+            min-width: max-content;
+            white-space: nowrap;
+        }
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+        .dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: white;
+        }
+        /* 主要內容區 */
+        .main-content {
+            margin-top: var(--header-height);
+            padding: 3rem 2rem;
+            width: 80%;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .tree-container {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin: 2rem auto;
+            width: 100%;
+            max-width: none;
+        }
+        .tree-title {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        /* 搜索框樣式 */
+        .search-container {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.5rem;
+            border: 2px solid #ddd;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background-color: var(--card-bg);
+        }
+        
+        .search-box:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+        
+        .clear-search {
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.2rem;
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+        
+        .clear-search:hover {
+            background-color: var(--primary-light);
+            color: white;
+        }
+        
+        /* 搜索高亮樣式 */
+        .search-highlight {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 0.1rem 0.2rem;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        
+        /* 確保搜索高亮不顯示提示文字 */
+        .search-highlight::after,
+        .search-highlight::before {
+            display: none !important;
+        }
+        
+        /* 搜索結果的特殊樣式 */
+        .search-mode .tree-children {
+            display: block !important;
+        }
+        
+        .search-mode .tree-folder.collapsed .tree-children {
+            display: block !important;
+        }
+        
+        .hidden-in-search {
+            display: none !important;
+        }
+        .download-all-btn {
+            display: block;
+            margin: 0 auto 1.5rem auto;
+            padding: 0.7rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .download-all-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        .tree-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .tree-node {
+            margin-bottom: 0.3rem;
+            animation: fadeInUp 0.3s ease-out;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .tree-folder-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tree-folder {
+            flex: 1;
+            font-weight: 600;
+            color: var(--primary-color);
+            cursor: pointer;
+            user-select: none;
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .tree-folder:hover {
+            background-color: #e8f4fd;
+            color: var(--primary-dark);
+            transform: translateX(2px);
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
+        }
+        .tree-folder:active {
+            transform: translateX(1px);
+            background-color: #d6eafc;
+        }
+        .tree-folder i {
+            margin-right: 0.8rem;
+            transition: all 0.3s ease;
+            width: 18px;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+        .tree-folder:hover i {
+            color: var(--primary-dark);
+            transform: scale(1.1);
+        }
+        .tree-folder .file-main-info > i {
+            margin-right: 0.8rem;
+            transition: all 0.3s ease;
+            width: 18px;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+        .tree-folder:hover .file-main-info > i {
+            color: var(--primary-dark);
+            transform: scale(1.1);
+        }
+        
+        /* 確保時鐘和其他圖示不受影響 */
+        .modified-time i, .file-size i {
+            transform: none !important;
+            transition: none !important;
+        }
+        
+        /* 修改這部分的 CSS，只針對資料夾名稱，不包含其他 span */
+        .tree-folder .file-main-info > span:not(.search-highlight) {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .tree-folder:hover .file-main-info > span:not(.search-highlight)::after {
+            content: " (點擊收合)";
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        .tree-folder.collapsed:hover .file-main-info > span:not(.search-highlight)::after {
+            content: " (點擊展開)";
+        }
+        
+        .tree-file {
+            color: var(--text-color);
+            padding: 0.4rem 0.8rem 0.4rem 2.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        .tree-file:hover {
+            background-color: #f8f9fa;
+        }
+        .tree-file i {
+            margin-right: 0.8rem;
+            color: var(--text-light);
+            width: 16px;
+        }
+        .download-btn {
+            margin-left: auto;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            opacity: 0.8;
+        }
+        .download-btn:hover {
+            background: #d68910;
+            opacity: 1;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(243, 156, 18, 0.3);
+        }
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        .tree-children {
+            padding-left: 2rem;
+            border-left: 2px dashed #bdc3c7;
+            margin-left: 1rem;
+            margin-top: 0.5rem;
+            position: relative;
+        }
+        .tree-children::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 0;
+            width: 2px;
+            height: 0;
+            background: var(--primary-color);
+            transition: height 0.3s ease;
+        }
+        .tree-children:hover::before {
+            height: 100%;
+        }
+        
+        /* 新增檔案資訊樣式 */
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+        
+        .file-main-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-left: 2rem;
+        }
+        
+        .folder-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+        
+        .modified-time {
+            white-space: nowrap;
+        }
+        
+        .file-size {
+            white-space: nowrap;
+            font-weight: 500;
+            color: var(--accent-color);
+        }
+        
+        @media (max-width: 768px) {
+            .burger { display: block; }
+            .nav-links {
+                position: absolute;
+                right: 0;
+                top: var(--header-height);
+                flex-direction: column;
+                background-color: var(--card-bg);
+                width: 100%;
+                text-align: center;
+                gap: 0;
+                transform: translateY(-150%);
+                transition: var(--transition);
+                box-shadow: var(--shadow);
+            }
+            .nav-links.active { transform: translateY(0); }
+            .nav-link { padding: 1rem; display: block; width: 100%; }
+            .main-content { 
+                width: 95%;
+                padding: 2rem 0.5rem; 
+            }
+            .tree-container { 
+                padding: 1rem; 
+            }
+            .tree-folder-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.3rem;
+            }
+            .tree-folder {
+                padding: 0.6rem;
+            }
+            .tree-folder:hover .file-main-info > span:not(.search-highlight)::after {
+                content: " (點擊)";
+            }
+            .tree-file {
+                padding-left: 2rem;
+            }
+            .folder-download-btn {
+                width: 100%;
+                font-size: 0.7rem;
+                padding: 0.25rem 0.5rem;
+            }
+            .download-btn {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.8rem;
+            }
+            
+            .file-details {
+                margin-left: 1rem;
+                font-size: 0.7rem;
+            }
+            
+            .folder-details {
+                flex-direction: column;
+                gap: 0.2rem;
+                font-size: 0.65rem;
+            }
+            
+            .file-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .search-box {
+                padding: 0.7rem 1rem 0.7rem 2.2rem;
+                font-size: 0.9rem;
+            }
+            
+            .search-icon {
+                left: 0.6rem;
+                font-size: 0.9rem;
+            }
+            
+            .clear-search {
+                right: 0.6rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-download"></i>
+                    <span>MooSaver</span>
+                </div>
+                <div class="nav-links" :class="{ active: menuActive }">
+                    <a href="/" class="nav-link">首頁</a>
+                    <a href="/download/" class="nav-link">下載資源</a>
+                    <a href="/files/" class="nav-link active">管理資源</a>
+                    <!-- 管理後台連結 - 只有管理員可見 -->
+                    <a href="/admin/" class="nav-link" v-if="isAdmin">
+                        <i class="fas fa-cog"></i> 管理後台
+                    </a>
+                    <div class="user-dropdown" @mouseenter="userMenu = true" @mouseleave="userMenu = false">
+                        <a href="#" class="nav-link user-link" @click.prevent="userMenu = !userMenu">
+                            <i class="fas fa-user-circle"></i> {{ username }}
+                            <i class="fas fa-caret-down" style="margin-left: 0.3em;"></i>
+                        </a>
+                        <div class="dropdown-menu" v-show="userMenu">
+                            <a href="/profile/" class="dropdown-item">個人資料</a>
+                            <a href="#" class="dropdown-item" @click.prevent="logout">登出</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="burger" @click="toggleMenu">
+                    <i :class="menuActive ? 'fas fa-times' : 'fas fa-bars'"></i>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="tree-container">
+                <h2 class="tree-title">檔案管理</h2>
+                
+                <!-- 搜索框 -->
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input 
+                        type="text" 
+                        class="search-box" 
+                        v-model="searchQuery"
+                        @input="performSearch"
+                        placeholder="搜索檔案和資料夾..."
+                    >
+                    <button 
+                        v-if="searchQuery" 
+                        class="clear-search" 
+                        @click="clearSearch"
+                        title="清除搜索"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <button class="download-all-btn" @click="downloadAll">
+                    <i class="fas fa-download"></i> 下載全部檔案
+                </button>
+                
+                <ul class="tree-list" :class="{ 'search-mode': searchQuery }">
+                    <tree-node
+                        v-for="(node, index) in fileTree"
+                        :key="index"
+                        :node="node"
+                        :level="0"
+                        :search-query="searchQuery"
+                        :search-paths="searchPaths"
+                        @download-file="downloadFile"
+                        @download-folder="downloadFolder"
+                    ></tree-node>
+                </ul>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p class="copyright">© 2025 MooSaver - Moodle資源下載工具. 保留所有權利。</p>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        // 樹狀節點組件
+        const TreeNode = {
+            name: 'TreeNode',
+            props: {
+                node: {
+                    type: Object,
+                    required: true
+                },
+                level: {
+                    type: Number,
+                    default: 0
+                },
+                searchQuery: {
+                    type: String,
+                    default: ''
+                },
+                searchPaths: {
+                    type: Array,
+                    default: () => []
+                }
+            },
+            data() {
+                return {
+                    isOpen: this.level === 0
+                }
+            },
+            computed: {
+                shouldBeOpen() {
+                    if (!this.searchQuery) {
+                        return this.level === 0;
+                    }
+                    
+                    if (this.node.type === 'folder') {
+                        return this.isInSearchPath();
+                    }
+                    return false;
+                },
+                isMatching() {
+                    if (!this.searchQuery) return true;
+                    return this.exactMatch(this.node.name.toLowerCase(), this.searchQuery.toLowerCase());  // 改為精確搜尋
+                },
+                hasVisibleChildren() {
+                    if (!this.node.children) return false;
+                    if (!this.searchQuery) return this.node.children.length > 0;
+                    
+                    return this.node.children.some(child => this.isChildVisible(child));
+                },
+                shouldShowNode() {
+                    if (!this.searchQuery) return true;
+                    
+                    return this.isMatching || this.hasMatchingDescendants(this.node);
+                }
+            },
+            watch: {
+                searchQuery: {
+                    handler(newVal) {
+                        if (newVal) {
+                            this.isOpen = this.shouldBeOpen || this.hasMatchingDescendants(this.node);
+                        } else {
+                            this.isOpen = this.level === 0;
+                        }
+                    },
+                    immediate: true
+                },
+                shouldBeOpen: {
+                    handler(newVal) {
+                        if (!this.searchQuery) {
+                            this.isOpen = newVal;
+                        }
+                    },
+                    immediate: true
+                }
+            },
+            methods: {
+                toggleFolder() {
+                    if (this.node.type === 'folder') {
+                        this.isOpen = !this.isOpen;
+                    }
+                },
+                handleDownload() {
+                    this.$emit('download-file', this.node);
+                },
+                handleDownloadFolder() {
+                    this.$emit('download-folder', this.node);
+                },
+                highlightText(text) {
+                    if (!this.searchQuery) return text;
+                    
+                    const regex = new RegExp(`(${this.escapeRegex(this.searchQuery)})`, 'gi');
+                    return text.replace(regex, '<span class="search-highlight">$1</span>');
+                },
+                escapeRegex(string) {
+                    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                },
+                isInSearchPath() {
+                    if (!this.searchPaths || this.searchPaths.length === 0) {
+                        return false;
+                    }
+                    
+                    const currentPath = this.node.path || this.node.name;
+                    return this.searchPaths.some(path => {
+                        return path.startsWith(currentPath + '/') || path === currentPath;
+                    });
+                },
+                isChildVisible(child) {
+                    if (!this.searchQuery) return true;
+        
+                    const childMatches = this.exactMatch(child.name.toLowerCase(), this.searchQuery.toLowerCase());  // 改為精確搜尋
+                    const hasMatchingDescendants = this.hasMatchingDescendants(child);
+        
+                    return childMatches || hasMatchingDescendants;
+                },
+                hasMatchingDescendants(node) {
+                    if (!node.children || !this.searchQuery) return false;
+                    
+                    const query = this.searchQuery.toLowerCase();
+                    
+                    for (const child of node.children) {
+                        if (this.exactMatch(child.name.toLowerCase(), query)) {  // 改為精確搜尋
+                            return true;
+                        }
+                        if (this.hasMatchingDescendants(child)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                exactMatch(text, query) {
+                    return text.includes(query);
+                }
+            },
+            template: `{% verbatim %}
+                <div class="tree-node" v-show="shouldShowNode">
+                    <!-- 資料夾 -->
+                    <div v-if="node.type === 'folder'" class="tree-folder-container">
+                        <div 
+                            class="tree-folder"
+                            :class="{ collapsed: !isOpen }"
+                            @click="toggleFolder"
+                        >
+                            <div class="file-info">
+                                <div class="file-main-info">
+                                    <i :class="isOpen ? 'fas fa-folder-open' : 'fas fa-folder'"></i>
+                                    <span v-html="highlightText(node.name)"></span>
+                                </div>
+                                <div class="folder-details">
+                                    <span class="modified-time">
+                                        <i class="fas fa-clock"></i> {{ node.modified_time }}
+                                    </span>
+                                    <small v-if="hasVisibleChildren">
+                                        ({{ node.children ? node.children.filter(child => !searchQuery || isChildVisible(child)).length : 0 }} 項目)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="download-btn folder-download-btn" 
+                                @click.stop="handleDownloadFolder"
+                                title="下載此資料夾">
+                            <i class="fas fa-download"></i> 下載資料夾
+                        </button>
+                    </div>
+                    
+                    <!-- 檔案 -->
+                    <div v-else-if="node.type === 'file'" class="tree-file">
+                        <div class="file-info">
+                            <div class="file-main-info">
+                                <i class="fas fa-file"></i>
+                                <span v-html="highlightText(node.name)"></span>
+                            </div>
+                            <div class="file-details">
+                                <span class="modified-time">
+                                    <i class="fas fa-clock"></i> {{ node.modified_time }}
+                                </span>
+                                <span class="file-size" v-if="node.size">
+                                    <i class="fas fa-hdd"></i> {{ node.size }}
+                                </span>
+                            </div>
+                        </div>
+                        <button class="download-btn" @click="handleDownload">
+                            <i class="fas fa-download"></i> 下載
+                        </button>
+                    </div>
+                    
+                    <!-- 子節點 -->
+                    <div 
+                        v-if="node.type === 'folder' && hasVisibleChildren && isOpen" 
+                        class="tree-children"
+                    >
+                        <tree-node
+                            v-for="(child, index) in node.children"
+                            :key="index"
+                            :node="child"
+                            :level="level + 1"
+                            :search-query="searchQuery"
+                            :search-paths="searchPaths"
+                            @download-file="$emit('download-file', $event)"
+                            @download-folder="$emit('download-folder', $event)"
+                        ></tree-node>
+                    </div>
+                </div>
+            {% endverbatim %}`
+        };
+
+        // 主應用
+        createApp({
+            components: {
+                TreeNode
+            },
+            data() {
+                return {
+                    menuActive: false,
+                    userMenu: false,
+                    username: window.djangoData.username,
+                    isAdmin: window.djangoData.isAdmin,
+                    fileTree: [],
+                    searchQuery: '',
+                    searchResults: [],
+                    searchPaths: [],
+                    allFiles: [],
+                }
+            },
+            computed: {
+                visibleSearchResultsCount() {
+                    console.log('計算搜索結果數量:', this.searchQuery, this.allFiles.length);
+        
+                    if (!this.searchQuery.trim() || !this.allFiles) return 0;
+
+                    const query = this.searchQuery.toLowerCase().trim();
+                    const matchedFiles = this.allFiles.filter(file => 
+                        this.fuzzyMatch(file.name.toLowerCase(), query)
+                    );
+        
+                    console.log('匹配的檔案數量:', matchedFiles.length);
+                    return matchedFiles.length;
+                }
+            },
+            mounted() {
+                this.initFileTree();
+            },
+            methods: {
+                toggleMenu() {
+                    this.menuActive = !this.menuActive;
+                },
+                logout() {
+                    fetch('/users/logout/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': this.getCSRFToken()
+                        },
+                        credentials: 'same-origin'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            window.location.href = '/users/login/';
+                        })
+                        .catch(error => {
+                            console.error('登出失敗:', error);
+                            window.location.href = '/users/login/';
+                        });
+                },
+                getCSRFToken() {
+                    const name = 'csrftoken=';
+                    const decodedCookie = decodeURIComponent(document.cookie);
+                    const cookieArray = decodedCookie.split(';');
+                    for (let i = 0; i < cookieArray.length; i++) {
+                        let cookie = cookieArray[i].trim();
+                        if (cookie.indexOf(name) === 0) {
+                            return cookie.substring(name.length, cookie.length);
+                        }
+                    }
+                    return '';
+                },
+                downloadFile(file) {
+                    if (file.path) {
+                        window.open(`/files/download?path=${encodeURIComponent(file.path)}`, '_blank');
+                    }
+                },
+                downloadFolder(folder) {
+                    if (folder.path) {
+                        window.open(`/files/download_folder?path=${encodeURIComponent(folder.path)}`, '_blank');
+                    } else {
+                        this.downloadAll();
+                    }
+                },
+                downloadAll() {
+                    window.open('/files/downloads/all/', '_blank');
+                },
+                performSearch() {
+                    console.log('執行搜索:', this.searchQuery);
+                    
+                    if (!this.searchQuery.trim()) {
+                        this.searchResults = [];
+                        this.searchPaths = [];
+                        return;
+                    }
+                    
+                    const query = this.searchQuery.toLowerCase().trim();
+                    this.searchResults = this.allFiles.filter(file => {
+                        return this.exactMatch(file.name.toLowerCase(), query);  // 改為精確搜尋
+                    });
+                    
+                    this.searchPaths = this.buildSearchPaths(this.searchResults);
+                },
+                
+                buildSearchPaths(searchResults) {
+                    const paths = new Set();
+                    
+                    searchResults.forEach(result => {
+                        if (result.path) {
+                            paths.add(result.path);
+                            
+                            const pathParts = result.path.split('/');
+                            let currentPath = '';
+                            
+                            for (let i = 0; i < pathParts.length - 1; i++) {
+                                if (i === 0) {
+                                    currentPath = pathParts[i];
+                                } else {
+                                    currentPath += '/' + pathParts[i];
+                                }
+                                paths.add(currentPath);
+                            }
+                        }
+                    });
+                    
+                    return Array.from(paths);
+                },
+                
+                countVisibleNodes(nodes) {
+                    let count = 0;
+                    if (!nodes || !this.searchQuery) return 0;
+                    
+                    const query = this.searchQuery.toLowerCase();
+                    
+                    for (const node of nodes) {
+                        const nodeMatches = this.fuzzyMatch(node.name.toLowerCase(), query);
+                        
+                        // 只計算直接匹配的節點
+                        if (nodeMatches) {
+                            count++;
+                        }
+                        
+                        // 遞歸計算子節點，但不重複計算父節點
+                        if (node.children && node.children.length > 0) {
+                            count += this.countVisibleNodes(node.children);
+                        }
+                    }
+                    
+                    return count;
+                },
+                
+                hasMatchingDescendants(node) {
+                    if (!node.children || !this.searchQuery) return false;
+                    
+                    const query = this.searchQuery.toLowerCase();
+                    
+                    for (const child of node.children) {
+                        if (this.exactMatch(child.name.toLowerCase(), query)) {  // 改為精確搜尋
+                            return true;
+                        }
+                        if (this.hasMatchingDescendants(child)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                
+                exactMatch(text, query) {
+                    return text.includes(query);
+                },
+                
+                clearSearch() {
+                    this.searchQuery = '';
+                    this.searchResults = [];
+                    this.searchPaths = [];
+                },
+                
+                flattenFileTree(nodes, parentPath = '') {
+                    let result = [];
+                    for (const node of nodes) {
+                        const currentPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+                        
+                        const nodeWithPath = {
+                            ...node,
+                            fullPath: currentPath
+                        };
+                        result.push(nodeWithPath);
+                        
+                        if (node.children && node.children.length > 0) {
+                            result = result.concat(this.flattenFileTree(node.children, currentPath));
+                        }
+                    }
+                    return result;
+                },
+                
+                initFileTree() {
+                    try {
+                        const rawData = '{{ file_tree_json|escapejs }}';
+                        console.log('Raw file tree data:', rawData);
+                        
+                        if (!rawData || rawData === '[]' || rawData === '') {
+                            console.warn('檔案樹資料為空');
+                            this.fileTree = [];
+                            this.allFiles = [];
+                            return;
+                        }
+                        
+                        this.fileTree = JSON.parse(rawData);
+                        console.log('Parsed file tree:', this.fileTree);
+                        
+                        this.allFiles = this.flattenFileTree(this.fileTree);
+                        console.log('Flattened files for search:', this.allFiles);
+                        
+                        this.$nextTick(() => {
+                            console.log('檔案樹已更新');
+                        });
+                        
+                    } catch (error) {
+                        console.error('解析檔案樹失敗:', error);
+                        console.error('原始資料:', '{{ file_tree_json|escapejs }}');
+                        this.fileTree = [];
+                        this.allFiles = [];
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

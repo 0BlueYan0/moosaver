@@ -1,0 +1,173 @@
+{% extends "master.html" %}
+  
+{% block title %}Moosaver登入{% endblock %}
+
+{% block content %}
+    <div id="app">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>Moosaver</h1>
+                <p>請登入您的帳號</p>
+            </div>
+            <form @submit.prevent="loginUser">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="username">用戶名或信箱</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        v-model="username" 
+                        required
+                        @blur="validateUsername"
+                    >
+                    <p class="error-message" v-if="errors.username">[[ errors.username ]]</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密碼</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        v-model="password"
+                        required
+                        @blur="validatePassword"
+                    >
+                    <p class="error-message" v-if="errors.password">[[ errors.password ]]</p>
+                </div>
+                
+                <div class="remember-me">
+                    <input type="checkbox" id="remember-me" v-model="rememberMe">
+                    <label for="remember-me">記住我</label>
+                </div>
+                
+                <!-- 修改按鈕文字顯示方式 -->
+                <button type="submit" class="login-button" :disabled="isLoading">
+                    <span v-if="isLoading">登入中...</span>
+                    <span v-else>登入</span>
+                </button>
+                
+                <p class="error-message" v-if="errors.login">[[ errors.login ]]</p>
+                
+                <div class="signup-link">
+                    還沒有帳號？ <a href="/users/register/">立即註冊</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // 確保 DOM 完全加載後再初始化 Vue
+        document.addEventListener('DOMContentLoaded', function() {
+            var app = new Vue({
+                el: '#app',
+                delimiters: ['[[', ']]'],
+                data: {
+                    username: '',
+                    password: '',
+                    rememberMe: false,
+                    isLoading: false,
+                    errors: {
+                        username: '',
+                        password: '',
+                        login: ''
+                    }
+                },
+                // 改寫計算屬性的語法以提高兼容性
+                computed: {
+                    loginButtonText: function() {
+                        return this.isLoading ? '登入中...' : '登入';
+                    }
+                },
+                methods: {
+                    validateUsername: function() {
+                        if (this.username.length === 0) {
+                            this.errors.username = '用戶名不能為空';
+                        } else {
+                            this.errors.username = '';
+                        }
+                    },
+                    validatePassword: function() {
+                        if (this.password.length === 0) {
+                            this.errors.password = '密碼不能為空';
+                        } else {
+                            this.errors.password = '';
+                        }
+                    },
+                    loginUser: function() {
+                        // 驗證所有欄位
+                        this.validateUsername();
+                        this.validatePassword();
+                        
+                        // 檢查是否有錯誤
+                        if (this.errors.username || this.errors.password) {
+                            return;
+                        }
+                        
+                        this.isLoading = true;
+                        this.errors.login = '';
+
+                        // 獲取CSRF token的更健壯方法
+                        let csrftoken;
+                        const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                        
+                        if (csrfElement) {
+                            csrftoken = csrfElement.value;
+                        } else {
+                            // 如果找不到表單中的token，嘗試從cookie獲取
+                            const cookies = document.cookie.split(';');
+                            for (let i = 0; i < cookies.length; i++) {
+                                const cookie = cookies[i].trim();
+                                if (cookie.startsWith('csrftoken=')) {
+                                    csrftoken = cookie.substring('csrftoken='.length);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 如果仍然找不到token，顯示錯誤
+                        if (!csrftoken) {
+                            this.isLoading = false;
+                            this.errors.login = 'CSRF Token 獲取失敗，請重新整理頁面';
+                            return;
+                        }
+                        
+                        fetch('/users/login/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken
+                            },
+                            body: JSON.stringify({
+                                username: this.username,
+                                password: this.password,
+                                rememberMe: this.rememberMe
+                            })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(data => Promise.reject(data));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            // 登入成功，重定向到首頁
+                            window.location.href = '/';
+                        })
+                        .catch(error => {
+                            // 登入失敗，顯示錯誤消息
+                            this.isLoading = false;
+                            if (error.error) {
+                                this.errors.login = error.error;
+                            } else {
+                                this.errors.login = '登入時發生錯誤，請稍後重試';
+                            }
+                        });
+                    }
+                }
+            });
+            
+        });
+    </script>
+</body>
+
+{% endblock %}

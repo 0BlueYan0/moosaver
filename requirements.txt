@@ -1,0 +1,4 @@
+moodle-dl==2.3.13
+requests
+django-widget-tweaks
+django

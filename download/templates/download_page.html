@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MooSaver - 資源下載</title>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 字體引入 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- 圖示引入 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 將 Django 變數傳遞給 JavaScript -->
+    <script>
+        window.djangoData = {
+            username: '{{ username|escapejs }}',
+            isAdmin: '{{ is_admin }}' === 'True'
+        };
+    </script>
+    
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-light: #5dade2;
+            --primary-dark: #2874a6;
+            --accent-color: #f39c12;
+            --text-color: #333;
+            --text-light: #666;
+            --bg-color: #f9f9f9;
+            --card-bg: #ffffff;
+            --header-height: 70px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            transition: var(--transition);
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            padding: 0 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .logo i {
+            margin-right: 0.5rem;
+            font-size: 1.8rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+            padding: 0.5rem 0;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+            transition: var(--transition);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .active {
+            color: var(--primary-color);
+        }
+
+        .active::after {
+            width: 100%;
+        }
+
+        .burger {
+            display: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .main-content {
+            margin-top: var(--header-height);
+            padding: 3rem 2rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            flex: 1;
+        }
+
+        .download-container {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
+            max-width: 500px;
+            margin: 3rem auto;
+        }
+
+        .download-heading {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .download-text {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            background-color: var(--primary-dark);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .copyright {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .user-dropdown {
+            position: relative;
+        }
+
+        .user-link {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+            padding: 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+            width: auto;
+            min-width: max-content;
+            white-space: nowrap;
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: white;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .burger {
+                display: block;
+            }
+
+            .nav-links {
+                position: absolute;
+                right: 0;
+                top: var(--header-height);
+                flex-direction: column;
+                background-color: var(--card-bg);
+                width: 100%;
+                text-align: center;
+                gap: 0;
+                transform: translateY(-150%);
+                transition: var(--transition);
+                box-shadow: var(--shadow);
+            }
+
+            .nav-links.active {
+                transform: translateY(0);
+            }
+
+            .nav-link {
+                padding: 1rem;
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header class="header">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-download"></i>
+                    <span>MooSaver</span>
+                </div>
+                <div class="nav-links" :class="{ active: menuActive }">
+                    <a href="/" class="nav-link">首頁</a>
+                    <a href="/download/" class="nav-link active">下載資源</a>
+                    <a href="/files/" class="nav-link">管理資源</a>
+                    <!-- 管理後台連結 - 只有管理員可見 -->
+                    <a href="/admin/" class="nav-link" v-if="isAdmin">
+                        <i class="fas fa-cog"></i> 管理後台
+                    </a>
+                    <!-- 使用者下拉選單 -->
+                    <div class="user-dropdown" @mouseenter="userMenu = true" @mouseleave="userMenu = false">
+                        <a href="#" class="nav-link user-link" @click.prevent="userMenu = !userMenu">
+                            <i class="fas fa-user-circle"></i> {{ username }}
+                            <i class="fas fa-caret-down" style="margin-left: 0.3em;"></i>
+                        </a>
+                        <div class="dropdown-menu" v-show="userMenu">
+                            <a href="/profile/" class="dropdown-item">個人資料</a>
+                            <a href="#" class="dropdown-item" @click.prevent="logout">登出</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="burger" @click="toggleMenu">
+                    <i :class="menuActive ? 'fas fa-times' : 'fas fa-bars'"></i>
+                </div>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="download-container">
+                <h1 class="download-heading">下載 Moodle 資源</h1>
+                <p class="download-text">
+                    請輸入您的 Moodle 學號和密碼，開始下載課程資源。
+                </p>
+
+                <form @submit.prevent="startDownload">
+                    <!-- 新增 Moodle 網址選擇 -->
+                    <div class="form-group">
+                        <label for="moodleUrl" class="form-label">Moodle 網址</label>
+                        <select id="moodleUrl" v-model="selectedUrl" class="form-input">
+                            <option value="https://ilearn.fcu.edu.tw/">逢甲大學(https://ilearn.fcu.edu.tw/)</option>
+                            <option value="custom">自訂網址</option>
+                        </select>
+                        <input
+                            v-if="selectedUrl === 'custom'"
+                            type="text"
+                            v-model="customUrl"
+                            class="form-input"
+                            placeholder="請輸入自訂 Moodle 網址"
+                            style="margin-top: 0.5rem;"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="studentId" class="form-label">NID/學號</label>
+                        <input type="text" id="studentId" v-model="studentId" class="form-input"
+                            placeholder="請輸入您的NID/學號" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">NID密碼</label>
+                        <input type="password" id="password" v-model="password" class="form-input"
+                            placeholder="請輸入您的NID密碼" required>
+                    </div>
+
+                    <button type="submit" class="btn" :disabled="isLoading">
+                        <i class="fas fa-download" v-if="!isLoading"></i>
+                        <i class="fas fa-spinner fa-spin" v-else></i>
+                        [[ isLoading ? '下載中...' : '開始下載' ]]
+                    </button>
+                </form>
+
+                <div v-if="progress.status" style="margin-top:1.5rem;">
+                    <div>進度：[[ progress.message ]] ([[ progress.percent ]]%)</div>
+                    <div style="background:#eee;height:16px;border-radius:8px;overflow:hidden;">
+                        <div :style="{width: progress.percent + '%', background: '#3498db', height:'100%'}"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn" style="margin-top:1rem;" @click="fetchProgress">查詢下載進度</button>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p class="copyright">© 2025 MooSaver - Moodle資源下載工具</p>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            data() {
+                return {
+                    menuActive: false,
+                    studentId: '',
+                    password: '',
+                    selectedUrl: 'https://ilearn.fcu.edu.tw/',
+                    customUrl: '',
+                    isLoading: false,
+                    progress: {
+                        status: false,
+                        message: '',
+                        percent: 0
+                    },
+                    userMenu: false,
+                    username: window.djangoData.username,
+                    isAdmin: window.djangoData.isAdmin,
+                }
+            },
+            mounted() {
+                // 移除 checkUserPermissions 的調用
+            },
+            methods: {
+                toggleMenu() {
+                    this.menuActive = !this.menuActive;
+                },
+                // 移除 checkUserPermissions 方法
+                startDownload() {
+                    this.isLoading = true;
+
+                    const moodleUrl = this.selectedUrl === 'custom' ? this.customUrl : this.selectedUrl;
+
+                    // 向後端發送下載請求
+                    fetch('/api/download/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.getCSRFToken()
+                        },
+                        body: JSON.stringify({
+                            student_id: this.studentId.toUpperCase(),
+                            password: this.password,
+                            moodle_url: moodleUrl
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            this.isLoading = false;
+                        })
+                        .catch(error => {
+                            console.error('下載請求錯誤:', error);
+                            alert('發生錯誤，請稍後再試');
+                            this.isLoading = false;
+                        });
+                },
+                fetchProgress() {
+                    // 向後端查詢下載進度
+                    fetch(`/api/download/progress/${this.studentId.toUpperCase()}/`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.getCSRFToken()
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'error') {
+                                // 下載尚未開始或失敗，顯示友善訊息
+                                this.progress.status = false;
+                                this.progress.message = data.message || '尚未開始下載';
+                                this.progress.percent = 0;
+                            } else {
+                                // 正常進度
+                                this.progress.status = true;
+                                this.progress.message = data.message;
+                                this.progress.percent = data.percent;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('查詢進度失敗:', error);
+                            this.progress.status = false;
+                            this.progress.message = '查詢進度失敗';
+                            this.progress.percent = 0;
+                        });
+                },
+                logout() {
+                    // 向後端發送登出請求
+                    fetch('/users/logout/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': this.getCSRFToken()
+                        },
+                        credentials: 'same-origin'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            window.location.href = '/users/login/';
+                        })
+                        .catch(error => {
+                            console.error('登出失敗:', error);
+                            window.location.href = '/users/login/';
+                        });
+                },
+                getCSRFToken() {
+                    const name = 'csrftoken=';
+                    const decodedCookie = decodeURIComponent(document.cookie);
+                    const cookieArray = decodedCookie.split(';');
+
+                    for (let i = 0; i < cookieArray.length; i++) {
+                        let cookie = cookieArray[i].trim();
+                        if (cookie.indexOf(name) === 0) {
+                            return cookie.substring(name.length, cookie.length);
+                        }
+                    }
+                    return '';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
