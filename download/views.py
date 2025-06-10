@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from .moodle_dl_utils import start_moodle_download, get_download_progress
 from django.contrib.auth.models import User
 from users.forms import UserEditForm
-from users.models import SiteUser
+from users.models import SiteUser, MoodleAccount
 from django.db import transaction
 import shutil
 import mimetypes
@@ -82,6 +82,9 @@ def api_download(request):
                     return JsonResponse({'status': 'error', 'message': token_result.get('error')}, status=400)
                 token = token_result.get('token', '')
                 privatetoken = token_result.get('privatetoken', '')
+
+                # 記錄 Moodle 帳號
+                MoodleAccount.objects.get_or_create(user=request.user, student_id=stuid)
 
                 # 取得使用者專屬資料夾路徑（加上 stuid 子資料夾）
                 user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username, stuid)
