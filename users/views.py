@@ -188,9 +188,6 @@ def get_user_statistics(request):
     user_list = []
     
     for user in users:
-        # 獲取該使用者關聯的所有 Moodle 帳號
-        moodle_links = UserMoodleLink.objects.filter(site_user=user.siteuser)
-        moodle_accounts = [link.moodle_user.moodle_stu_id for link in moodle_links]
         
         user_data = {
             'id': user.id,

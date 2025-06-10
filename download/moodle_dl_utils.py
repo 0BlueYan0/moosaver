@@ -11,6 +11,7 @@ from moodle_dl.downloader.download_service import DownloadService
 from moodle_dl.types import MoodleDlOpts
 from users.models import SiteUser
 from django.utils import timezone
+from asgiref.sync import sync_to_async
 
 def get_user_path(user, stuid):
     # 取得每位用戶的 moodle_dl 專屬目錄（在 MEDIA_ROOT 下）
@@ -20,14 +21,13 @@ def strip_extra_opts(config_dict):
     allowed_keys = set(MoodleDlOpts.__dataclass_fields__.keys())
     return {k: v for k, v in config_dict.items() if k in allowed_keys}
 
-def update_user_download_stats(user, files_downloaded, bytes_downloaded):
-    """更新使用者的下載統計"""
+async def update_user_download_stats(user, files_downloaded, bytes_downloaded):
     try:
-        site_user = SiteUser.objects.get(user=user)
+        site_user = await sync_to_async(SiteUser.objects.get)(user=user)
         site_user.total_downloads += files_downloaded
         site_user.total_download_size += bytes_downloaded
         site_user.last_download_time = timezone.now()
-        site_user.save()
+        await sync_to_async(site_user.save)()
     except SiteUser.DoesNotExist:
         pass
 
@@ -104,7 +104,7 @@ def start_moodle_download(user, stuid):
 
         # 更新下載統計
         status = download_service.status
-        update_user_download_stats(user, status.files_downloaded, status.bytes_downloaded)
+        await update_user_download_stats(user, status.files_downloaded, status.bytes_downloaded)
 
         # 最後寫入完成
         with open(progress_file, "w") as f:
