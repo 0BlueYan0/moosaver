@@ -188,21 +188,27 @@ def get_user_statistics(request):
     user_list = []
     
     for user in users:
-        
+        if hasattr(user, 'siteuser'):
+            total_downloads = user.siteuser.total_downloads
+            total_size_mb = user.siteuser.get_total_download_size_mb()
+            last_download = user.siteuser.last_download_time.strftime('%Y-%m-%d %H:%M:%S') if user.siteuser.last_download_time else None
+        else:
+            total_downloads = 0
+            total_size_mb = 0
+            last_download = None
+
         user_data = {
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            'total_downloads': user.siteuser.total_downloads,
-            'total_size': user.siteuser.get_total_download_size_mb(),
-            'last_download': user.siteuser.last_download_time.strftime('%Y-%m-%d %H:%M:%S') if user.siteuser.last_download_time else None,
-            'moodle_accounts': moodle_accounts,  # 添加關聯的 Moodle 帳號
-            'moodle_accounts_count': len(moodle_accounts)  # 添加關聯的 Moodle 帳號數量
+            'total_downloads': total_downloads,
+            'total_size': total_size_mb,
+            'last_download': last_download,
         }
         user_list.append(user_data)
     
     # 計算所有平台的使用者總數
-    total_moodle_accounts = UserMoodleLink.objects.values('moodle_user').distinct().count()
+    total_moodle_accounts = 0 #UserMoodleLink.objects.values('moodle_user').distinct().count()
     
     return JsonResponse({
         'total_users': total_users,
