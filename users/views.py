@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import authenticate, login, logout
 from django.conf import settings
-from .models import SiteUser, UserMoodleLink
+from .models import SiteUser
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Sum, Count
 from datetime import datetime, timedelta
