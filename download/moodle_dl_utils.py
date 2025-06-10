@@ -94,6 +94,13 @@ def start_moodle_download(user, stuid):
 
     async def do_download():
         changed_courses = await moodle.fetch_state(database)
+
+        # 如果沒有任何變動，直接回報已同步
+        if not changed_courses:
+            with open(progress_file, "w") as f:
+                json.dump({"status": "synced", "message": "所有課程都已是最新狀態。", "percent": 100}, f, ensure_ascii=False)
+            return
+
         download_service = DownloadService(
             changed_courses, config, opts, database
         )
