@@ -22,3 +22,14 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         SiteUser.objects.create(user=instance)
 
+class MoodleAccount(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='moodle_accounts')
+    student_id = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'student_id')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.student_id}"
+
