@@ -15,16 +15,3 @@ class SiteUser(models.Model):
         """返回總下載大小（MB）"""
         return round(self.total_download_size / (1024 * 1024), 2)
 
-class MoodleUser(models.Model):
-    moodle_stu_id = models.CharField(max_length=50, unique=True)
-
-    def __str__(self):
-        return self.moodle_name
-
-class UserMoodleLink(models.Model):
-    site_user = models.ForeignKey(SiteUser, on_delete=models.CASCADE)
-    moodle_user = models.ForeignKey(MoodleUser, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return f"{self.site_user} <-> {self.moodle_user}"
-

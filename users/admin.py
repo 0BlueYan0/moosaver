@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import SiteUser, MoodleUser, UserMoodleLink
+from .models import SiteUser
 
 class SiteUserInline(admin.StackedInline):
     model = SiteUser
@@ -26,14 +26,3 @@ class CustomUserAdmin(UserAdmin):
 # 重新註冊 User 模型
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
-
-@admin.register(MoodleUser)
-class MoodleUserAdmin(admin.ModelAdmin):
-    list_display = ('moodle_stu_id',)
-    search_fields = ('moodle_stu_id',)
-
-@admin.register(UserMoodleLink)
-class UserMoodleLinkAdmin(admin.ModelAdmin):
-    list_display = ('site_user', 'moodle_user')
-    list_filter = ('site_user', 'moodle_user')
-    search_fields = ('site_user__user__username', 'moodle_user__moodle_stu_id')
