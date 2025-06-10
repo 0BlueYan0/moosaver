@@ -15,6 +15,7 @@ import mimetypes
 import zipfile
 import io
 import datetime
+from .models import DownloadRecord
 
 def home_view(request):
     if request.user.is_authenticated:
@@ -292,74 +293,146 @@ def file_manage_view(request):
     })
 
 def download_file_view(request):
+    """處理單一檔案的下載"""
     if not request.user.is_authenticated:
-        return redirect('login')
+        raise Http404
+    
     file_path = request.GET.get('path', '')
-    # 僅允許下載 user 資料夾下的檔案
-    user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
-    abs_path = os.path.abspath(os.path.join(user_folder, file_path.lstrip('/')))
-    # 防止路徑穿越
-    if not abs_path.startswith(user_folder) or not os.path.isfile(abs_path):
-        raise Http404("檔案不存在")
-    filename = os.path.basename(abs_path)
-    mime_type, _ = mimetypes.guess_type(abs_path)
-    response = FileResponse(open(abs_path, 'rb'), as_attachment=True, filename=filename)
-    if mime_type:
-        response['Content-Type'] = mime_type
-    return response
+    base_path = os.path.join(settings.MEDIA_ROOT, request.user.username)
+    full_path = os.path.join(base_path, file_path)
+
+    # 安全性檢查，確保檔案路徑在使用者目錄內
+    if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+        raise Http404
+
+    if os.path.exists(full_path) and os.path.isfile(full_path):
+        # 更新使用者下載統計
+        site_user, created = SiteUser.objects.get_or_create(user=request.user)
+        file_size = os.path.getsize(full_path)
+        site_user.total_downloads += 1
+        site_user.total_download_size += file_size
+        site_user.last_download_time = datetime.datetime.now()
+        site_user.save()
+
+        # 建立下載記錄
+        DownloadRecord.objects.create(
+            user=request.user,
+            file_path=file_path,
+            size=file_size
+        )
+        
+        return FileResponse(open(full_path, 'rb'), as_attachment=True)
+    else:
+        raise Http404
 
 def download_all_user_files_view(request):
+    """下載指定學號的所有檔案"""
     if not request.user.is_authenticated:
-        return redirect('login')
-    user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
-    if not os.path.exists(user_folder):
-        raise Http404("沒有檔案")
+        raise Http404
     
-    # 定義要隱藏的檔案列表
-    hidden_files = {'config.json', 'moodle_state.db', 'progress.json'}
+    stuid = request.GET.get('stuid')
+    if not stuid:
+        raise Http404
     
+    # 建立目標資料夾路徑
+    user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username, stuid)
+    
+    # 安全性檢查
+    base_path = os.path.join(settings.MEDIA_ROOT, request.user.username)
+    if not os.path.abspath(user_folder).startswith(os.path.abspath(base_path)):
+        raise Http404
+    
+    if not os.path.isdir(user_folder):
+        raise Http404
+    
+    # 計算資料夾總大小
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(user_folder):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
+
+    # 更新使用者下載統計
+    site_user, created = SiteUser.objects.get_or_create(user=request.user)
+    site_user.total_downloads += 1  # 整個資料夾算一次下載
+    site_user.total_download_size += total_size
+    site_user.last_download_time = datetime.datetime.now()
+    site_user.save()
+
+    # 建立下載記錄
+    DownloadRecord.objects.create(
+        user=request.user,
+        file_path=f"All files for {stuid}",
+        size=total_size
+    )
+
+    # 建立 ZIP 檔案
     zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(user_folder):
             for file in files:
-                # 過濾隱藏檔案（以.開頭的檔案）和特定的系統檔案
-                if not file.startswith('.') and file not in hidden_files:
-                    abs_file = os.path.join(root, file)
-                    rel_path = os.path.relpath(abs_file, user_folder)
-                    zip_file.write(abs_file, arcname=rel_path)
+                file_path = os.path.join(root, file)
+                # 建立相對路徑，避免在 ZIP 中包含完整路徑
+                rel_path = os.path.relpath(file_path, user_folder)
+                zf.write(file_path, rel_path)
+    
     zip_buffer.seek(0)
-    response = FileResponse(zip_buffer, as_attachment=True, filename='my_files.zip')
-    response['Content-Type'] = 'application/zip'
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{stuid}_files.zip"'
     return response
 
 def download_folder_view(request):
+    """處理資料夾下載（壓縮為ZIP）"""
     if not request.user.is_authenticated:
-        return redirect('login')
+        raise Http404
     
     folder_path = request.GET.get('path', '')
-    user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
-    abs_path = os.path.abspath(os.path.join(user_folder, folder_path.lstrip('/')))
+    base_path = os.path.join(settings.MEDIA_ROOT, request.user.username)
+    full_path = os.path.join(base_path, folder_path)
     
-    # 防止路徑穿越
-    if not abs_path.startswith(user_folder) or not os.path.isdir(abs_path):
-        raise Http404("資料夾不存在")
+    # 安全性檢查
+    if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+        raise Http404
     
+    if not os.path.isdir(full_path):
+        raise Http404
+
+    # 計算資料夾總大小
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(full_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
+
+    # 更新使用者下載統計
+    site_user, created = SiteUser.objects.get_or_create(user=request.user)
+    site_user.total_downloads += 1
+    site_user.total_download_size += total_size
+    site_user.last_download_time = datetime.datetime.now()
+    site_user.save()
+    
+    # 建立下載記錄
+    DownloadRecord.objects.create(
+        user=request.user,
+        file_path=folder_path,
+        size=total_size
+    )
+
     # 建立 ZIP 檔案
     zip_buffer = io.BytesIO()
-    folder_name = os.path.basename(abs_path) or 'folder'
-    
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for root, dirs, files in os.walk(abs_path):
-            # 過濾隱藏檔案
-            hidden_files = {'config.json', 'moodle_state.db', 'progress.json'}
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(full_path):
+            # 建立 ZIP 內的根目錄
+            zip_root = os.path.basename(full_path)
             for file in files:
-                if not file.startswith('.') and file not in hidden_files:
-                    abs_file = os.path.join(root, file)
-                    rel_path = os.path.relpath(abs_file, abs_path)
-                    zip_file.write(abs_file, arcname=rel_path)
+                file_path = os.path.join(root, file)
+                # 建立 ZIP 內的相對路徑
+                rel_path = os.path.relpath(file_path, os.path.dirname(full_path))
+                zf.write(file_path, rel_path)
     
     zip_buffer.seek(0)
-    
-    response = FileResponse(zip_buffer, as_attachment=True, filename=f'{folder_name}.zip')
-    response['Content-Type'] = 'application/zip'
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    # 使用資料夾名稱命名 ZIP 檔案
+    folder_name = os.path.basename(folder_path)
+    response['Content-Disposition'] = f'attachment; filename="{folder_name}.zip"'
     return response

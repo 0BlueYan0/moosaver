@@ -10,7 +10,9 @@ from django.conf import settings
 from .models import SiteUser
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
 from datetime import datetime, timedelta
+from download.models import DownloadRecord
 
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -163,28 +165,58 @@ def admin_dashboard(request):
     """管理系統主頁面"""
     return render(request, 'users/admin_dashboard.html')
 
-@login_required
 @user_passes_test(is_superuser)
 def get_user_statistics(request):
     """獲取使用者統計數據的 API"""
     # 獲取總體統計
     total_users = User.objects.count()
-    total_downloads = SiteUser.objects.aggregate(total=Sum('total_downloads'))['total'] or 0
-    total_size = SiteUser.objects.aggregate(total=Sum('total_download_size'))['total'] or 0
     
+    # 從新的 DownloadRecord 計算總數，這更準確
+    total_stats = DownloadRecord.objects.aggregate(
+        total_downloads=Count('id'),
+        total_size=Sum('size')
+    )
+    total_downloads = total_stats['total_downloads'] or 0
+    total_size = total_stats['total_size'] or 0
+
     # 獲取最近 7 天的下載趨勢
-    last_week = datetime.now() - timedelta(days=7)
+    today = datetime.now().date()
+    last_week = today - timedelta(days=6)
+    
+    daily_records = DownloadRecord.objects.filter(
+        timestamp__date__gte=last_week
+    ).annotate(
+        date=TruncDate('timestamp')
+    ).values(
+        'date'
+    ).annotate(
+        downloads=Count('id'),
+        size=Sum('size')
+    ).order_by('date')
+
+    # 將結果轉換為字典以便快速查找
+    stats_map = {item['date']: item for item in daily_records}
+    
+    # 建立包含過去 7 天的完整列表
     daily_stats = []
     for i in range(7):
         date = last_week + timedelta(days=i)
-        daily_stats.append({
-            'date': date.strftime('%Y-%m-%d'),
-            'downloads': 0,  # 這裡需要根據實際下載記錄來統計
-            'size': 0
-        })
+        stats_for_day = stats_map.get(date)
+        if stats_for_day:
+            daily_stats.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'downloads': stats_for_day['downloads'],
+                'size': round((stats_for_day['size'] or 0) / (1024 * 1024), 2) # MB
+            })
+        else:
+            daily_stats.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'downloads': 0,
+                'size': 0
+            })
     
     # 獲取使用者列表，包含所有平台的使用者
-    users = User.objects.select_related('siteuser').all()
+    users = User.objects.prefetch_related('siteuser').all()
     user_list = []
     
     for user in users:
