@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}管理系統 - MooSaver{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card-title {
+        color: #4a6fb5;
+        margin-bottom: 1rem;
+    }
+    .table th {
+        background-color: #f8f9fa;
+    }
+    .moodle-accounts {
+        font-size: 0.9em;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 統計卡片 -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">系統使用者數</h5>
+                    <h2 id="total-users">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Moodle 帳號總數</h5>
+                    <h2 id="total-moodle-accounts">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">總下載次數</h5>
+                    <h2 id="total-downloads">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">總下載大小</h5>
+                    <h2 id="total-size">0 MB</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 圖表區域 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">下載趨勢</h5>
+                    <canvas id="downloadChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用者列表 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">使用者列表</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>使用者名稱</th>
+                                    <th>電子郵件</th>
+                                    <th>Moodle 帳號數</th>
+                                    <th>下載次數</th>
+                                    <th>下載大小</th>
+                                    <th>最後下載時間</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-list">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 獲取統計數據
+    fetch('/users/admin/statistics/')
+        .then(response => response.json())
+        .then(data => {
+            // 更新統計卡片
+            document.getElementById('total-users').textContent = data.total_users;
+            document.getElementById('total-moodle-accounts').textContent = data.total_moodle_accounts;
+            document.getElementById('total-downloads').textContent = data.total_downloads;
+            document.getElementById('total-size').textContent = data.total_size + ' MB';
+
+            // 更新使用者列表
+            const userList = document.getElementById('user-list');
+            data.users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td>${user.email}</td>
+                    <td>${user.moodle_accounts_count}</td>
+                    <td>${user.total_downloads}</td>
+                    <td>${user.total_size} MB</td>
+                    <td>${user.last_download || '無'}</td>
+                `;
+                userList.appendChild(row);
+            });
+
+            // 繪製圖表
+            const ctx = document.getElementById('downloadChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.daily_stats.map(stat => stat.date),
+                    datasets: [{
+                        label: '下載次數',
+                        data: data.daily_stats.map(stat => stat.downloads),
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+});
+</script>
+{% endblock %} 
