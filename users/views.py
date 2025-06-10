@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import authenticate, login, logout
 from django.conf import settings
-from .models import SiteUser
+from .models import SiteUser, MoodleAccount
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncDate
@@ -216,7 +216,7 @@ def get_user_statistics(request):
             })
     
     # 獲取使用者列表，包含所有平台的使用者
-    users = User.objects.prefetch_related('siteuser').all()
+    users = User.objects.prefetch_related('siteuser', 'moodle_accounts').all()
     user_list = []
     
     for user in users:
@@ -229,6 +229,8 @@ def get_user_statistics(request):
             total_size_mb = 0
             last_download = None
 
+        moodle_accounts = list(user.moodle_accounts.values_list('student_id', flat=True))
+
         user_data = {
             'id': user.id,
             'username': user.username,
@@ -236,15 +238,17 @@ def get_user_statistics(request):
             'total_downloads': total_downloads,
             'total_size': total_size_mb,
             'last_download': last_download,
+            'moodle_accounts': moodle_accounts,
+            'moodle_accounts_count': len(moodle_accounts)
         }
         user_list.append(user_data)
     
     # 計算所有平台的使用者總數
-    total_moodle_accounts = 0 #UserMoodleLink.objects.values('moodle_user').distinct().count()
+    total_moodle_accounts = MoodleAccount.objects.values('student_id').distinct().count()
     
     return JsonResponse({
         'total_users': total_users,
-        'total_moodle_accounts': total_moodle_accounts,  # 添加所有平台的使用者總數
+        'total_moodle_accounts': total_moodle_accounts,
         'total_downloads': total_downloads,
         'total_size': round(total_size / (1024 * 1024), 2),  # 轉換為 MB
         'daily_stats': daily_stats,
