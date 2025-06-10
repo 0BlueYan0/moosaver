@@ -7,7 +7,10 @@ from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import authenticate, login, logout
 from django.conf import settings
-from .models import SiteUser
+from .models import SiteUser, UserMoodleLink
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Sum, Count
+from datetime import datetime, timedelta
 
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
@@ -144,7 +147,71 @@ def register_view(request):
                 # 捕獲其他未預期的錯誤
                 return JsonResponse({'error': str(e)}, status=500)
 
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def logout_view(request):
     logout(request)
-    return JsonResponse({'message': '已成功登出'})
+    if request.method == 'POST':
+        return JsonResponse({'message': '已成功登出'})
+    return redirect('login')
+
+def is_superuser(user):
+    return user.is_superuser
+
+@login_required
+@user_passes_test(is_superuser)
+def admin_dashboard(request):
+    """管理系統主頁面"""
+    return render(request, 'users/admin_dashboard.html')
+
+@login_required
+@user_passes_test(is_superuser)
+def get_user_statistics(request):
+    """獲取使用者統計數據的 API"""
+    # 獲取總體統計
+    total_users = User.objects.count()
+    total_downloads = SiteUser.objects.aggregate(total=Sum('total_downloads'))['total'] or 0
+    total_size = SiteUser.objects.aggregate(total=Sum('total_download_size'))['total'] or 0
+    
+    # 獲取最近 7 天的下載趨勢
+    last_week = datetime.now() - timedelta(days=7)
+    daily_stats = []
+    for i in range(7):
+        date = last_week + timedelta(days=i)
+        daily_stats.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'downloads': 0,  # 這裡需要根據實際下載記錄來統計
+            'size': 0
+        })
+    
+    # 獲取使用者列表，包含所有平台的使用者
+    users = User.objects.select_related('siteuser').all()
+    user_list = []
+    
+    for user in users:
+        # 獲取該使用者關聯的所有 Moodle 帳號
+        moodle_links = UserMoodleLink.objects.filter(site_user=user.siteuser)
+        moodle_accounts = [link.moodle_user.moodle_stu_id for link in moodle_links]
+        
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'total_downloads': user.siteuser.total_downloads,
+            'total_size': user.siteuser.get_total_download_size_mb(),
+            'last_download': user.siteuser.last_download_time.strftime('%Y-%m-%d %H:%M:%S') if user.siteuser.last_download_time else None,
+            'moodle_accounts': moodle_accounts,  # 添加關聯的 Moodle 帳號
+            'moodle_accounts_count': len(moodle_accounts)  # 添加關聯的 Moodle 帳號數量
+        }
+        user_list.append(user_data)
+    
+    # 計算所有平台的使用者總數
+    total_moodle_accounts = UserMoodleLink.objects.values('moodle_user').distinct().count()
+    
+    return JsonResponse({
+        'total_users': total_users,
+        'total_moodle_accounts': total_moodle_accounts,  # 添加所有平台的使用者總數
+        'total_downloads': total_downloads,
+        'total_size': round(total_size / (1024 * 1024), 2),  # 轉換為 MB
+        'daily_stats': daily_stats,
+        'users': user_list
+    })
