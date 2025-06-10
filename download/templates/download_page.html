@@ -450,15 +450,34 @@
                             moodle_url: moodleUrl
                         })
                     })
-                        .then(response => response.json())
-                        .then(data => {
-                            this.isLoading = false;
-                        })
-                        .catch(error => {
-                            console.error('下載請求錯誤:', error);
-                            alert('發生錯誤，請稍後再試');
-                            this.isLoading = false;
-                        });
+                    .then(response => {
+                        // 先檢查狀態碼
+                        if (!response.ok) {
+                            // 如果狀態碼不是 2xx，拋出錯誤
+                            return response.json().then(errorData => {
+                                throw new Error(errorData.message || `請求失敗 (${response.status})`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        this.isLoading = false;
+                        // 檢查回應中是否有錯誤狀態
+                        if (data.status === 'error') {
+                            alert(`錯誤: ${data.message}`);
+                        } else if (data.status === 'started') {
+                            alert('下載已開始！請使用「查詢下載進度」按鈕查看進度。');
+                            // 自動開始查詢進度
+                            setTimeout(() => {
+                                this.fetchProgress();
+                            }, 1000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('下載請求錯誤:', error);
+                        alert(`發生錯誤: ${error.message}`);
+                        this.isLoading = false;
+                    });
                 },
                 fetchProgress() {
                     // 向後端查詢下載進度
