@@ -2,6 +2,35 @@
 
 {% block title %}Moosaver註冊{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Add notification styles */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        color: white;
+        z-index: 1001;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    .notification.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    .notification.is-danger {
+        background-color: #e74c3c;
+    }
+    .notification.is-success {
+        background-color: #2ecc71;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div id="app">
     <div class="register-container">
@@ -42,6 +71,11 @@
             </div>
         </form>
     </div>
+
+    <!-- Notification Box -->
+    <div :class="['notification', 'is-' + notification.type, { 'show': notification.show }]">
+        [[ notification.message ]]
+    </div>
 </div>
 
 <script>
@@ -58,6 +92,11 @@
                 username: '',
                 password: '',
                 passwordAgain: ''
+            },
+            notification: {
+                message: '',
+                type: '',
+                show: false
             }
         },
         computed: {
@@ -104,18 +143,20 @@
                 }
             },
             registerUser() {
-                if (this.isFormValid) {
-                    // 獲取CSRF令牌
-                    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                // Trigger all validations before submitting
+                this.validateEmail();
+                this.validateUsername();
+                this.validatePassword();
+                this.validatePasswordAgain();
 
-                    // 準備要發送的數據
+                if (this.isFormValid) {
+                    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
                     const userData = {
                         email: this.email,
                         username: this.username,
                         password: this.password
                     };
 
-                    // 發送POST請求到Django後端
                     fetch('/users/register/', {
                         method: 'POST',
                         headers: {
@@ -124,34 +165,33 @@
                         },
                         body: JSON.stringify(userData)
                     })
-                        .then(response => {
-                            if (!response.ok) {
-                                return response.json().then(data => Promise.reject(data));
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            window.location.href = '/home/'; // 註冊成功後重定向到首頁
-                        })
-                        .catch(errors => {
-                            // 處理後端返回的錯誤
-                            if (errors.email) this.errors.email = errors.email;
-                            if (errors.username) this.errors.username = errors.username;
-                            if (errors.password) this.errors.password = errors.password;
-                        });
-                    // 表單提交後重置
-                    this.email = '';
-                    this.username = '';
-                    this.password = '';
-                    this.passwordAgain = '';
-                    this.errors = {
-                        email: '',
-                        username: '',
-                        password: '',
-                        passwordAgain: ''
-                    };
-
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(data => Promise.reject(data));
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        this.showNotification(`註冊成功！歡迎，${data.username}。即將為您跳轉...`, 'success');
+                        setTimeout(() => {
+                            window.location.href = '/'; // Redirect to the main page
+                        }, 2000);
+                    })
+                    .catch(errors => {
+                        // Handle backend validation errors
+                        if (errors.email) this.errors.email = errors.email;
+                        if (errors.username) this.errors.username = errors.username;
+                        if (errors.password) this.errors.password = errors.password;
+                    });
                 }
+            },
+            showNotification(message, type) {
+                this.notification.message = message;
+                this.notification.type = type;
+                this.notification.show = true;
+                setTimeout(() => {
+                    this.notification.show = false;
+                }, 3000);
             }
         }
     });
