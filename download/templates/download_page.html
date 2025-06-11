@@ -591,6 +591,9 @@
                     }, 3000);
                 },
                 logout() {
+                    // Clear all local storage on logout
+                    localStorage.clear();
+
                     fetch('/users/logout/', {
                         method: 'POST',
                         headers: {
