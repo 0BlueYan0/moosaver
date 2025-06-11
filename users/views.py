@@ -125,9 +125,6 @@ def register_view(request):
                     password=password
                 )
 
-                # 新增：建立對應的 SiteUser
-                SiteUser.objects.create(user=user, display_name=username)
-
                 # 註冊成功後建立使用者資料夾
                 import os
                 user_dir = os.path.join(settings.MEDIA_ROOT, user.username)
@@ -178,7 +175,7 @@ def get_user_statistics(request):
     )
     total_downloads = total_stats['total_downloads'] or 0
     total_size = total_stats['total_size'] or 0
-
+    
     # 獲取最近 7 天的下載趨勢
     today = datetime.now().date()
     last_week = today - timedelta(days=6)
@@ -211,7 +208,7 @@ def get_user_statistics(request):
         else:
             daily_stats.append({
                 'date': date.strftime('%Y-%m-%d'),
-                'downloads': 0,
+                    'downloads': 0,
                 'size': 0
             })
     
@@ -230,7 +227,7 @@ def get_user_statistics(request):
             last_download = None
 
         moodle_accounts = list(user.moodle_accounts.values_list('student_id', flat=True))
-
+        
         user_data = {
             'id': user.id,
             'username': user.username,

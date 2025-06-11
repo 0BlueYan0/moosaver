@@ -106,8 +106,18 @@ def start_moodle_download(user, stuid):
         )
         # 啟動進度同步背景任務
         progress_task = asyncio.create_task(report_progress_task(download_service))
-        await download_service.real_run()
-        download_service.all_done = True  # 通知進度任務結束
+        
+        try:
+            await download_service.real_run()
+        finally:
+            # 無論下載成功或失敗，都確保進度回報任務被取消
+            # 這樣可以避免孤立的任務在背景繼續運行
+            download_service.all_done = True # 溫和地通知任務結束
+            progress_task.cancel() # 強制取消任務
+            try:
+                await progress_task # 等待任務確實被取消
+            except asyncio.CancelledError:
+                pass # 取消是預期行為
 
         # 更新下載統計
         status = download_service.status
@@ -116,7 +126,6 @@ def start_moodle_download(user, stuid):
         # 最後寫入完成
         with open(progress_file, "w") as f:
             json.dump({"status": "done", "message": "下載完成！", "percent": 100}, f)
-        await progress_task
 
     # Windows 下修正 event loop
     if sys.platform.startswith("win"):
