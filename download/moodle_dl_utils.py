@@ -10,6 +10,7 @@ from moodle_dl.database import StateRecorder
 from moodle_dl.downloader.download_service import DownloadService
 from moodle_dl.types import MoodleDlOpts
 from users.models import SiteUser
+from download.models import DownloadRecord
 from django.utils import timezone
 from asgiref.sync import sync_to_async
 
@@ -21,15 +22,24 @@ def strip_extra_opts(config_dict):
     allowed_keys = set(MoodleDlOpts.__dataclass_fields__.keys())
     return {k: v for k, v in config_dict.items() if k in allowed_keys}
 
-async def update_user_download_stats(user, files_downloaded, bytes_downloaded):
-    try:
-        site_user = await sync_to_async(SiteUser.objects.get)(user=user)
-        site_user.total_downloads += files_downloaded
+async def update_user_download_stats(user, stuid, files_downloaded, bytes_downloaded):
+    # 只有在實際下載了檔案時才更新統計數據
+    if files_downloaded > 0:
+        # 使用 get_or_create 確保 SiteUser 存在，避免錯誤
+        site_user, _ = await sync_to_async(SiteUser.objects.get_or_create)(user=user)
+        
+        # 將整個 Moodle 同步操作視為一次下載
+        site_user.total_downloads += 1
         site_user.total_download_size += bytes_downloaded
         site_user.last_download_time = timezone.now()
         await sync_to_async(site_user.save)()
-    except SiteUser.DoesNotExist:
-        pass
+
+        # 為這次同步操作建立一個統一的 DownloadRecord，使統計一致
+        await sync_to_async(DownloadRecord.objects.create)(
+            user=user,
+            size=bytes_downloaded,
+            file_path=f"Moodle Sync: {stuid}"  # 記錄是哪個學號的同步
+        )
 
 def start_moodle_download(user, stuid):
     user_path = get_user_path(user, stuid)
@@ -121,7 +131,7 @@ def start_moodle_download(user, stuid):
 
         # 更新下載統計
         status = download_service.status
-        await update_user_download_stats(user, status.files_downloaded, status.bytes_downloaded)
+        await update_user_download_stats(user, stuid, status.files_downloaded, status.bytes_downloaded)
 
         # 最後寫入完成
         with open(progress_file, "w") as f:
