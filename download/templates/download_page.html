@@ -478,7 +478,27 @@
                 }
             },
             mounted() {
-                // Initial actions can go here if needed
+                // Check for an ongoing download when the page loads
+                const lastStuid = localStorage.getItem('lastMoodleStuid');
+                if (lastStuid) {
+                    // Temporarily set studentId to check its progress
+                    this.studentId = lastStuid;
+                    fetch(`/api/download/progress/${lastStuid}/`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => {
+                            if (data && (data.status === 'start' || data.status === 'downloading')) {
+                                // An old download is still running, restore the state
+                                this.downloading = true;
+                                this.isLoading = true; // Also set isLoading to keep button disabled
+                                this.progress = data.percent;
+                                this.progressMessage = data.message;
+                                this.checkProgress(); // Start polling
+                            }
+                        }).catch(() => {
+                            // Failed to get progress, do nothing
+                            this.studentId = ''; // Clear it back
+                        });
+                }
             },
             methods: {
                 toggleMenu() {
@@ -492,6 +512,7 @@
                     
                     try {
                         const moodleUrl = this.selectedUrl === 'custom' ? this.customUrl : this.selectedUrl;
+                        const stuid = this.studentId.toUpperCase();
                         const response = await fetch('/api/download/', {
                             method: 'POST',
                             headers: {
@@ -499,7 +520,7 @@
                                 'X-CSRFToken': this.getCookie('csrftoken')
                             },
                             body: JSON.stringify({
-                                student_id: this.studentId.toUpperCase(),
+                                student_id: stuid,
                                 password: this.password,
                                 moodle_url: moodleUrl
                             })
@@ -510,6 +531,9 @@
                         if (!response.ok) {
                             throw new Error(data.message || data.error || '發生未知錯誤');
                         }
+                        
+                        // Save the student ID to remember the session
+                        localStorage.setItem('lastMoodleStuid', stuid);
 
                         this.progressMessage = '已開始下載，正在獲取進度...';
                         this.checkProgress();
