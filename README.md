@@ -22,7 +22,7 @@
 #### 快速啟動
 
 ```bash
-docker run -p 8000:8000 -v /path/to/your/downloads:/app/users_data 0blueyan0/moosaver:latest
+docker run -p 8000:8000 -v /path/to/your/downloads:/app/users_data -e DATABASE_PATH=/app/users_data/db.sqlite3 0blueyan0/moosaver:latest
 ```
 
 #### 詳細設定
@@ -38,6 +38,7 @@ docker run -d \
   --name moosaver \
   -p 8000:8000 \
   -v /path/to/your/downloads:/app/users_data \
+  -e DATABASE_PATH=/app/users_data/db.sqlite3 \
   0blueyan0/moosaver:latest
 ```
 
@@ -52,6 +53,7 @@ http://localhost:8000
 |------|------|------|
 | `-p 8000:8000` | 埠號對應 (主機:容器) | 可改為其他埠號如 `-p 3000:8000` |
 | `-v /path/to/your/downloads:/app/users_data` | 資料卷掛載 | 將下載檔案儲存到主機 |
+| `-e DATABASE_PATH=/app/users_data/db.sqlite3` | database路徑 | 不知道怎麼改的請保持原樣 |
 
 #### Docker Compose（推薦）
 
@@ -66,6 +68,8 @@ services:
       - "8000:8000"
     volumes:
       - /path/to/your/downloads:/app/users_data
+    environment:
+      - DATABASE_PATH=/app/users_data/db.sqlite3
     restart: unless-stopped
 ```
 
