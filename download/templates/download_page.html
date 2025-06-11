@@ -326,6 +326,23 @@
         .notification.is-success {
             background-color: #2ecc71;
         }
+
+        .progress-container {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .progress-bar {
+            background-color: #eee;
+            border-radius: var(--radius);
+            height: 20px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .progress-bar-inner {
+            background-color: var(--primary-color);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 
@@ -403,31 +420,26 @@
                             placeholder="請輸入您的NID密碼" required>
                     </div>
 
-                    <button type="submit" class="btn" :disabled="isLoading">
-                        <i class="fas fa-download" v-if="!isLoading"></i>
+                    <button type="submit" class="btn" :disabled="isLoading || downloading">
+                        <i class="fas fa-download" v-if="!isLoading && !downloading"></i>
                         <i class="fas fa-spinner fa-spin" v-else></i>
-                        [[ isLoading ? '下載中...' : '開始下載' ]]
+                        [[ isLoading ? '處理中...' : (downloading ? '下載中...' : '開始下載') ]]
                     </button>
                 </form>
 
-                <div v-if="progress.status" style="margin-top:1.5rem;">
-                    <div>進度：[[ progress.message ]] ([[ progress.percent ]]%)</div>
-                    <div style="background:#eee;height:16px;border-radius:8px;overflow:hidden;">
-                        <div :style="{width: progress.percent + '%', background: '#3498db', height:'100%'}"></div>
+                <!-- Progress Bar -->
+                <div class="progress-container" v-if="downloading">
+                    <p class="progress-message">[[ progressMessage ]] ([[ progress ]]%)</p>
+                    <div class="progress-bar">
+                        <div class="progress-bar-inner" :style="{ width: progress + '%' }"></div>
                     </div>
                 </div>
-                
             </div>
         </main>
 
         <footer class="footer">
             <p class="copyright">© 2025 MooSaver - Moodle資源下載工具</p>
         </footer>
-
-        <!-- 進度顯示 -->
-        <div class="progress-container" v-if="downloading">
-            <!-- ... progress content ... -->
-        </div>
 
         <!-- 通知框 -->
         <div :class="['notification', 'is-' + notification.type, { 'show': notification.show }]">

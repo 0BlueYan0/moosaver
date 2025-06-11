@@ -16,6 +16,7 @@ import zipfile
 import io
 import datetime
 from .models import DownloadRecord
+import threading
 
 def home_view(request):
     if request.user.is_authenticated:
@@ -113,11 +114,19 @@ def api_download(request):
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(config_data, f, ensure_ascii=False, indent=4)
                     
-                # 啟動 Moodle 下載
-                start_moodle_download(request.user, stuid)
-                return JsonResponse({"status": "started"})
+                # 啟動 Moodle 下載 (in a background thread)
+                download_thread = threading.Thread(
+                    target=start_moodle_download,
+                    args=(request.user, stuid)
+                )
+                download_thread.start()
+                
+                return JsonResponse({"status": "started", "message": "下載任務已在背景啟動"})
+
             except json.JSONDecodeError:
                 return JsonResponse({'error': '無效的JSON格式'}, status=400)
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 def api_download_progress(request, stuid):
     if not request.user.is_authenticated:
