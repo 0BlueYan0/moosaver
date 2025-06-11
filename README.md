@@ -55,7 +55,8 @@ http://localhost:8000
 
 #### Docker Compose（推薦）
 
-建立 `docker-compose.yml` 檔案：
+- Image 僅限 x86 平台 
+- 建立 `docker-compose.yml` 檔案：
 
 ```yaml
 services:
@@ -76,11 +77,13 @@ docker-compose up -d
 ### 本地開發
 
 1. 安裝依賴
+- 可以使用 python 虛擬環境
 ```bash
 pip install -r requirements.txt
 ```
 
 2. 執行資料庫遷移
+- 會建立 db.sqlite3 在 Repo 根目錄
 ```bash
 python manage.py migrate
 ```
@@ -114,6 +117,7 @@ moosaver/
 ├── requirements.txt   # Python 依賴
 ├── Dockerfile        # Docker 配置
 └── manage.py         # Django 管理命令
+└── db.sqlite3        # Django Data Model DB (Generated)
 ```
 
 ## 開源專案致謝

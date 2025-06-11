@@ -302,11 +302,35 @@
                 width: 100%;
             }
         }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            color: white;
+            z-index: 1001;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .notification.is-danger {
+            background-color: #e74c3c;
+        }
+        .notification.is-success {
+            background-color: #2ecc71;
+        }
     </style>
 </head>
 
 <body>
-    <div id="app">
+    <div id="app" class="main-content">
         <header class="header">
             <nav class="navbar">
                 <div class="logo">
@@ -399,177 +423,173 @@
         <footer class="footer">
             <p class="copyright">© 2025 MooSaver - Moodle資源下載工具</p>
         </footer>
+
+        <!-- 進度顯示 -->
+        <div class="progress-container" v-if="downloading">
+            <!-- ... progress content ... -->
+        </div>
+
+        <!-- 通知框 -->
+        <div :class="['notification', 'is-' + notification.type, { 'show': notification.show }]">
+            [[ notification.message ]]
+        </div>
     </div>
 
     <script>
-        const { createApp } = Vue;
-
-        createApp({
+        const app = Vue.createApp({
             delimiters: ['[[', ']]'],
             data() {
                 return {
+                    // Menu and user info
                     menuActive: false,
+                    userMenu: false,
+                    username: window.djangoData.username,
+                    isAdmin: window.djangoData.isAdmin,
+
+                    // Form fields
                     studentId: '',
                     password: '',
                     selectedUrl: 'https://ilearn.fcu.edu.tw/',
                     customUrl: '',
-                    isLoading: false,
-                    progress: {
-                        status: false,
+                    
+                    // State management
+                    isLoading: false, // For the button spinner
+                    downloading: false, // For showing the progress bar
+                    progress: 0,
+                    progressMessage: '',
+                    notification: {
                         message: '',
-                        percent: 0
+                        type: '',
+                        show: false
                     },
-                    userMenu: false,
-                    username: window.djangoData.username,
-                    isAdmin: window.djangoData.isAdmin,
-                    progressTimer: null // <--- 新增
+                    progressTimer: null
                 }
             },
             mounted() {
-                // 移除 checkUserPermissions 的調用
+                // Initial actions can go here if needed
             },
             methods: {
                 toggleMenu() {
                     this.menuActive = !this.menuActive;
                 },
-                // 移除 checkUserPermissions 方法
-                startDownload() {
-                    // 按下按鈕立即顯示進度條並開始輪詢
-                    this.progress.status = true;
-                    this.progress.message = '下載準備中...';
-                    this.progress.percent = 0;
-                    this.startProgressPolling();
-
+                async startDownload() {
                     this.isLoading = true;
-                    const moodleUrl = this.selectedUrl === 'custom' ? this.customUrl : this.selectedUrl;
-                    fetch('/api/download/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': this.getCSRFToken()
-                        },
-                        body: JSON.stringify({
-                            student_id: this.studentId.toUpperCase(),
-                            password: this.password,
-                            moodle_url: moodleUrl
-                        })
-                    })
-                    .then(response => {
+                    this.downloading = true;
+                    this.progress = 0;
+                    this.progressMessage = '正在準備中...';
+                    
+                    try {
+                        const moodleUrl = this.selectedUrl === 'custom' ? this.customUrl : this.selectedUrl;
+                        const response = await fetch('/api/download/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                student_id: this.studentId.toUpperCase(),
+                                password: this.password,
+                                moodle_url: moodleUrl
+                            })
+                        });
+
+                        const data = await response.json();
+
                         if (!response.ok) {
-                            return response.json().then(errorData => {
-                                throw new Error(errorData.message || `請求失敗 (${response.status})`);
-                            });
+                            throw new Error(data.message || data.error || '發生未知錯誤');
                         }
-                        return response.json();
-                    })
-                    .then(data => {
+
+                        this.progressMessage = '已開始下載，正在獲取進度...';
+                        this.checkProgress();
+
+                    } catch (error) {
+                        this.showNotification(error.message, 'danger');
                         this.isLoading = false;
-                        if (data.status === 'error') {
-                            alert(`錯誤: ${data.message}`);
-                            // 若出錯則隱藏進度條並停止輪詢
-                            this.progress.status = false;
-                            this.stopProgressPolling();
-                        }
-                        // 不再於此處啟動進度條，因為已在一開始啟動
-                    })
-                    .catch(error => {
-                        console.error('下載請求錯誤:', error);
-                        alert(`發生錯誤: ${error.message}`);
-                        this.isLoading = false;
-                        this.progress.status = false;
-                        this.stopProgressPolling();
-                    });
+                        this.downloading = false;
+                    }
                 },
-                startProgressPolling() {
-                    // 先清除舊的計時器
+                checkProgress() {
                     if (this.progressTimer) {
                         clearInterval(this.progressTimer);
                     }
-                    // 立即查詢一次
-                    this.fetchProgress();
-                    // 每2秒查詢一次
+                    
                     this.progressTimer = setInterval(() => {
-                        this.fetchProgress();
+                        fetch(`/api/download/progress/${this.studentId.toUpperCase()}/`)
+                            .then(response => {
+                                if (!response.ok) throw new Error('無法獲取進度');
+                                return response.json();
+                            })
+                            .then(data => {
+                                this.progress = data.percent;
+                                this.progressMessage = data.message;
+                                
+                                if (data.status === 'done' || data.status === 'synced' || data.status === 'error') {
+                                    clearInterval(this.progressTimer);
+                                    this.isLoading = false;
+                                    this.downloading = false;
+                                    
+                                    if (data.status === 'done') {
+                                        this.showNotification('下載完成！將為您跳轉至檔案頁面。', 'success');
+                                        setTimeout(() => { window.location.href = '/files/'; }, 2000);
+                                    } else if (data.status === 'synced') {
+                                        this.showNotification('所有課程都已是最新狀態。', 'success');
+                                    } else if (data.status === 'error') {
+                                        this.showNotification(data.message, 'danger');
+                                    }
+                                }
+                            })
+                            .catch(err => {
+                                clearInterval(this.progressTimer);
+                                this.isLoading = false;
+                                this.downloading = false;
+                                this.showNotification(err.message || '無法獲取進度，請稍後再試。', 'danger');
+                            });
                     }, 2000);
                 },
-                stopProgressPolling() {
-                    if (this.progressTimer) {
-                        clearInterval(this.progressTimer);
-                        this.progressTimer = null;
-                    }
-                },
-                fetchProgress() {
-                    fetch(`/api/download/progress/${this.studentId.toUpperCase()}/`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': this.getCSRFToken()
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'error') {
-                            this.progress.status = false;
-                            this.progress.message = data.message || '尚未開始下載';
-                            this.progress.percent = 0;
-                            this.stopProgressPolling();
-                        } else {
-                            this.progress.status = true;
-                            this.progress.message = data.message;
-                            this.progress.percent = data.percent;
-                            // 若進度達 100% 或已完成，則停止輪詢
-                            if (data.percent >= 100 || /完成|已完成|finished|done/i.test(data.message)) {
-                                this.stopProgressPolling();
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('查詢進度失敗:', error);
-                        this.progress.status = false;
-                        this.progress.message = '查詢進度失敗';
-                        this.progress.percent = 0;
-                        this.stopProgressPolling();
-                    });
+                showNotification(message, type) {
+                    this.notification.message = message;
+                    this.notification.type = type;
+                    this.notification.show = true;
+                    setTimeout(() => {
+                        this.notification.show = false;
+                    }, 3000);
                 },
                 logout() {
-                    // 向後端發送登出請求
                     fetch('/users/logout/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': this.getCSRFToken()
-                        },
-                        credentials: 'same-origin'
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            window.location.href = '/users/login/';
-                        })
-                        .catch(error => {
-                            console.error('登出失敗:', error);
-                            window.location.href = '/users/login/';
-                        });
+                            'X-CSRFToken': this.getCookie('csrftoken')
+                        }
+                    }).then(() => {
+                        window.location.href = '/users/login/';
+                    }).catch(() => {
+                        window.location.href = '/users/login/';
+                    });
                 },
-                getCSRFToken() {
-                    const name = 'csrftoken=';
-                    const decodedCookie = decodeURIComponent(document.cookie);
-                    const cookieArray = decodedCookie.split(';');
-
-                    for (let i = 0; i < cookieArray.length; i++) {
-                        let cookie = cookieArray[i].trim();
-                        if (cookie.indexOf(name) === 0) {
-                            return cookie.substring(name.length, cookie.length);
+                getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
                         }
                     }
-                    return '';
+                    return cookieValue;
                 }
             },
             beforeUnmount() {
-                // 組件卸載時清除計時器
-                this.stopProgressPolling();
+                if (this.progressTimer) {
+                    clearInterval(this.progressTimer);
+                }
             }
-        }).mount('#app');
+        });
+        app.mount('#app');
     </script>
 </body>
 

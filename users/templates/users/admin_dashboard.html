@@ -106,54 +106,72 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 獲取統計數據
-    fetch('/users/admin/statistics/')
-        .then(response => response.json())
-        .then(data => {
-            // 更新統計卡片
-            document.getElementById('total-users').textContent = data.total_users;
-            document.getElementById('total-moodle-accounts').textContent = data.total_moodle_accounts;
-            document.getElementById('total-downloads').textContent = data.total_downloads;
-            document.getElementById('total-size').textContent = data.total_size + ' MB';
+    let downloadChart = null; // 用於存放 Chart 實例
 
-            // 更新使用者列表
-            const userList = document.getElementById('user-list');
-            data.users.forEach(user => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${user.username}</td>
-                    <td>${user.email}</td>
-                    <td>${user.moodle_accounts_count}</td>
-                    <td>${user.total_downloads}</td>
-                    <td>${user.total_size} MB</td>
-                    <td>${user.last_download || '無'}</td>
-                `;
-                userList.appendChild(row);
-            });
+    function fetchAndUpdateStats() {
+        fetch('/users/admin/statistics/')
+            .then(response => response.json())
+            .then(data => {
+                // 更新統計卡片
+                document.getElementById('total-users').textContent = data.total_users;
+                document.getElementById('total-moodle-accounts').textContent = data.total_moodle_accounts;
+                document.getElementById('total-downloads').textContent = data.total_downloads;
+                document.getElementById('total-size').textContent = data.total_size + ' MB';
 
-            // 繪製圖表
-            const ctx = document.getElementById('downloadChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.daily_stats.map(stat => stat.date),
-                    datasets: [{
-                        label: '下載次數',
-                        data: data.daily_stats.map(stat => stat.downloads),
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
+                // 更新使用者列表
+                const userList = document.getElementById('user-list');
+                userList.innerHTML = ''; // 清空舊的列表
+                data.users.forEach(user => {
+                    const moodleAccountsHtml = user.moodle_accounts.length > 0
+                        ? `<span class="moodle-accounts">(${user.moodle_accounts.join(', ')})</span>`
+                        : '';
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.username}</td>
+                        <td>${user.email}</td>
+                        <td>${user.moodle_accounts_count} ${moodleAccountsHtml}</td>
+                        <td>${user.total_downloads}</td>
+                        <td>${user.total_size} MB</td>
+                        <td>${user.last_download || '無'}</td>
+                    `;
+                    userList.appendChild(row);
+                });
+
+                // 銷毀舊圖表（如果存在）
+                if (downloadChart) {
+                    downloadChart.destroy();
+                }
+
+                // 繪製新圖表
+                const ctx = document.getElementById('downloadChart').getContext('2d');
+                downloadChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.daily_stats.map(stat => stat.date),
+                        datasets: [{
+                            label: '下載次數',
+                            data: data.daily_stats.map(stat => stat.downloads),
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
                         }
                     }
-                }
+                });
             });
-        });
+    }
+
+    // 首次載入
+    fetchAndUpdateStats();
+
+    // 每 30 秒自動刷新
+    setInterval(fetchAndUpdateStats, 30000);
 });
 </script>
 {% endblock %} 
