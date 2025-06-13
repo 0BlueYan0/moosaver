@@ -218,11 +218,11 @@ def get_user_statistics(request):
     
     for user in users:
         if hasattr(user, 'siteuser'):
-            total_downloads = user.siteuser.total_downloads
+            user_total_downloads = user.siteuser.total_downloads
             total_size_mb = user.siteuser.get_total_download_size_mb()
             last_download = user.siteuser.last_download_time.strftime('%Y-%m-%d %H:%M:%S') if user.siteuser.last_download_time else None
         else:
-            total_downloads = 0
+            user_total_downloads = 0
             total_size_mb = 0
             last_download = None
 
@@ -232,7 +232,7 @@ def get_user_statistics(request):
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            'total_downloads': total_downloads,
+            'total_downloads': user_total_downloads,
             'total_size': total_size_mb,
             'last_download': last_download,
             'moodle_accounts': moodle_accounts,
